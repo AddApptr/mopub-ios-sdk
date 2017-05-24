@@ -125,6 +125,9 @@
     MPLogDebug(@"Tracking an impression for %@.", self.adIdentifier);
     self.hasTrackedImpression = YES;
     [self trackMetricsForURLs:self.impressionTrackerURLs];
+    if ([self.delegate respondsToSelector:@selector(reportImpression)]) {
+        [self.delegate performSelector:@selector(reportImpression)];
+    }
 }
 
 - (void)trackClick
