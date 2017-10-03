@@ -144,7 +144,9 @@
     if ([self.adAdapter respondsToSelector:@selector(trackClick)] && ![self isThirdPartyHandlingClicks]) {
         [self.adAdapter trackClick];
     }
-
+    if ([self.delegate respondsToSelector:@selector(gotClick)]) {
+        [self.delegate performSelector:@selector(gotClick)];
+    }
 }
 
 - (void)trackMetricsForURLs:(NSSet *)URLs
@@ -168,6 +170,8 @@
     } else if ([self.adAdapter respondsToSelector:@selector(willAttachToView:)]) {
         [self.adAdapter willAttachToView:view];
     }
+    UITapGestureRecognizer *recognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(adViewTapped)];
+    [view addGestureRecognizer:recognizer];
 }
 
 - (BOOL)isThirdPartyHandlingClicks
