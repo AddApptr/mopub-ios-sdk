@@ -37,6 +37,21 @@
  */
 - (void)willLeaveApplicationFromNativeAd:(MPNativeAd *)nativeAd;
 
+/**
+ * AddApptr adjustment to be sure that an impression is reported
+ * to the delegate.
+ *
+ */
+- (void)reportImpression;
+
+
+/**
+ * AddApptr adjustment to be sure that a click is reported
+ * to the delegate.
+ *
+ */
+-(void)reportClick;
+
 @required
 
 /** @name Managing Modal Content Presentation */

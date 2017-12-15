@@ -144,8 +144,8 @@
     if ([self.adAdapter respondsToSelector:@selector(trackClick)] && ![self isThirdPartyHandlingClicks]) {
         [self.adAdapter trackClick];
     }
-    if ([self.delegate respondsToSelector:@selector(gotClick)]) {
-        [self.delegate performSelector:@selector(gotClick)];
+    if ([self.delegate respondsToSelector:@selector(reportClick)]) {
+        [self.delegate performSelector:@selector(reportClick)];
     }
 }
 
