@@ -19,28 +19,10 @@ function build_mopub_sdk_device() {
   xcodebuild -project MoPubSDK.xcodeproj -configuration Release -sdk iphoneos -target MoPubSDK clean install
 }
 
+function build_mopub_resource_bundle() {
+  xcodebuild -project MoPubSDK.xcodeproj -configuration Release  -target MoPubResources clean install
+}
 
-
-while getopts "x:h" opt; do
-  case "$opt" in
-  h)
-    showHelp
-    exit
-    ;;
-  x)
-    echo "$0: Will use Xcode from ${OPTARG}"
-    export DEVELOPER_DIR="${OPTARG}/Contents/Developer"
-    ;;
-  \?)
-    showHelp >&2
-    exit 1
-    ;;
-  *)
-    echo "unexpected option: $opt" # FIXME: Add script name and line number.
-    exit 1
-    ;;
-  esac
-done
 
 
 if test -f build/Release*/libMoPubSDK.a
@@ -58,8 +40,28 @@ fi
 
 build_mopub_sdk_simulator
 build_mopub_sdk_device
+#build_mopub_resource_bundle
 
 lipo -create build/Release*/libMoPubSDK.a -output libMoPubSDK.a
 
-lipo -info libMoPubSDK.a
+MOPUB_OUTPUT_FOLDER='MoPub_Build_for_AATKit'
+
+
+if [ ! -d  MoPub_Build_for_AATKit ];
+then
+  mkdir $MOPUB_OUTPUT_FOLDER
+fi
+
+rm -r MoPub_Build_for_AATKit/*
+
+mv libMoPubSDK.a $MOPUB_OUTPUT_FOLDER/
+lipo -info $MOPUB_OUTPUT_FOLDER/libMoPubSDK.a
+rsync -avt MoPubSDK/* \
+  --exclude .DS_Store \
+  --exclude *.m\
+  $MOPUB_OUTPUT_FOLDER
+
+# Do not include Viewability SDKs by default
+rm -r $MOPUB_OUTPUT_FOLDER/Viewability/MOAT
+rm -r $MOPUB_OUTPUT_FOLDER/Viewability/Avid
 
