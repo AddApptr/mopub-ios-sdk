@@ -46,13 +46,9 @@ lipo -create build/Release*/libMoPubSDK.a -output libMoPubSDK.a
 
 MOPUB_OUTPUT_FOLDER='MoPub_Build_for_AATKit'
 
+rm -rf $MOPUB_OUTPUT_FOLDER
 
-if [ ! -d  MoPub_Build_for_AATKit ];
-then
-  mkdir $MOPUB_OUTPUT_FOLDER
-fi
-
-rm -r MoPub_Build_for_AATKit/*
+mkdir $MOPUB_OUTPUT_FOLDER
 
 mv libMoPubSDK.a $MOPUB_OUTPUT_FOLDER/
 lipo -info $MOPUB_OUTPUT_FOLDER/libMoPubSDK.a
