@@ -38,15 +38,20 @@ then
   rm -f libMoPubSDK.a
 fi
 
-build_mopub_sdk_simulator
-build_mopub_sdk_device
-#build_mopub_resource_bundle
-
-lipo -create build/Release*/libMoPubSDK.a -output libMoPubSDK.a
-
+# Remove previoud output folder
 MOPUB_OUTPUT_FOLDER='MoPub_Build_for_AATKit'
-
 rm -rf $MOPUB_OUTPUT_FOLDER
+
+# Build for simulator and device
+build_mopub_sdk_simulator
+lipo -create build/Release-iphonesimulator/libMoPubSDK.a -output libMoPubSDKSimulator.a
+build_mopub_sdk_device
+lipo -create build/Release-iphoneos/libMoPubSDK.a -output libMoPubSDKDevice.a
+
+# Build library, that can be used for simulator and device
+lipo -create libMoPubSDKSimulator.a libMoPubSDKDevice.a -output libMoPubSDK.a
+rm libMoPubSDKSimulator.a
+rm libMoPubSDKDevice.a
 
 mkdir $MOPUB_OUTPUT_FOLDER
 
