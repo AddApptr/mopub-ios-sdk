@@ -1,7 +1,7 @@
 //
 //  MPAdAlertManager.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -9,11 +9,10 @@
 #import "MPAdAlertManager.h"
 #import "MPAdConfiguration.h"
 #import "MPAdAlertGestureRecognizer.h"
-#import "MPConstants.h"
-#import "MPCoreInstanceProvider.h"
-#import "MPIdentityProvider.h"
-#import "MPLastResortDelegate.h"
 #import "MPLogging.h"
+#import "MPIdentityProvider.h"
+#import "MPCoreInstanceProvider.h"
+#import "MPLastResortDelegate.h"
 
 #import <QuartzCore/QuartzCore.h>
 #import <CoreLocation/CoreLocation.h>
@@ -31,12 +30,14 @@
 
 @implementation MPAdAlertManager
 
-// synthesize for `MPAdAlertManagerProtocol` protocol
 @synthesize delegate = _delegate;
 @synthesize adConfiguration = _adConfiguration;
+@synthesize processedAlert = _processedAlert;
+@synthesize adAlertGestureRecognizer = _adAlertGestureRecognizer;
 @synthesize adUnitId = _adUnitId;
 @synthesize targetAdView = _targetAdView;
 @synthesize location = _location;
+@synthesize currentOpenMailVC = _currentOpenMailVC;
 
 - (id)init
 {
@@ -91,10 +92,10 @@
             [params setValue:[UIDevice currentDevice].systemVersion forKey:@"platform_version"];
             [params setValue:[MPIdentityProvider identifier] forKey:@"device_id"];
             [params setValue:[UIDevice currentDevice].model forKey:@"device_model"];
-            [params setValue:[NSNumber numberWithBool:self.adConfiguration.isFullscreenAd] forKey:@"is_fullscreen_ad"];
+            [params setValue:[NSNumber numberWithInteger:self.adConfiguration.adType] forKey:@"ad_type"];
             [params setValue:self.adUnitId forKey:@"ad_unit_id"];
             [params setValue:self.adConfiguration.dspCreativeId forKey:@"creative_id"];
-            [params setValue:self.adConfiguration.adType forKey:@"ad_type"];
+            [params setValue:self.adConfiguration.networkType forKey:@"network_type"];
             [params setValue:[[NSLocale currentLocale] localeIdentifier] forKey:@"device_locale"];
             [params setValue:[self.location description] forKey:@"location"];
             [params setValue:MP_SDK_VERSION forKey:@"sdk_version"];
@@ -223,7 +224,7 @@
     return YES; // handle the touch
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer;
 {
     return YES;
 }

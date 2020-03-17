@@ -1,36 +1,28 @@
 //
 //  MPInterstitialViewController.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import <UIKit/UIKit.h>
-#import "MPExtendedHitBoxButton.h"
 #import "MPGlobal.h"
 
 @class CLLocation;
-
-/**
- The purpose of this @c MPInterstitialViewController protocol is to define the common interface
- between interstitial view controllers without forcing them to subclass @c MPInterstitialViewController.
- */
-@protocol MPInterstitialViewController <NSObject>
-@end
 
 @protocol MPInterstitialViewControllerDelegate;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-@interface MPInterstitialViewController : UIViewController <MPInterstitialViewController>
+@interface MPInterstitialViewController : UIViewController
 
 @property (nonatomic, assign) MPInterstitialCloseButtonStyle closeButtonStyle;
 @property (nonatomic, assign) MPInterstitialOrientationType orientationType;
-@property (nonatomic, strong) MPExtendedHitBoxButton *closeButton;
+@property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, weak) id<MPInterstitialViewControllerDelegate> delegate;
 
-- (void)presentInterstitialFromViewController:(UIViewController *)controller complete:(void(^)(NSError *))complete;
+- (void)presentInterstitialFromViewController:(UIViewController *)controller;
 - (void)dismissInterstitialAnimated:(BOOL)animated;
 - (BOOL)shouldDisplayCloseButton;
 - (void)willPresentInterstitial;
@@ -43,22 +35,17 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-@protocol MPInterstitialViewControllerAppearanceDelegate <NSObject>
-
-- (void)interstitialWillAppear:(id<MPInterstitialViewController>)interstitial;
-- (void)interstitialDidAppear:(id<MPInterstitialViewController>)interstitial;
-- (void)interstitialWillDisappear:(id<MPInterstitialViewController>)interstitial;
-- (void)interstitialDidDisappear:(id<MPInterstitialViewController>)interstitial;
-
-@end
-
-@protocol MPInterstitialViewControllerDelegate <MPInterstitialViewControllerAppearanceDelegate>
+@protocol MPInterstitialViewControllerDelegate <NSObject>
 
 - (NSString *)adUnitId;
-- (void)interstitialDidLoadAd:(id<MPInterstitialViewController>)interstitial;
-- (void)interstitialDidFailToLoadAd:(id<MPInterstitialViewController>)interstitial;
-- (void)interstitialDidReceiveTapEvent:(id<MPInterstitialViewController>)interstitial;
-- (void)interstitialWillLeaveApplication:(id<MPInterstitialViewController>)interstitial;
+- (void)interstitialDidLoadAd:(MPInterstitialViewController *)interstitial;
+- (void)interstitialDidFailToLoadAd:(MPInterstitialViewController *)interstitial;
+- (void)interstitialWillAppear:(MPInterstitialViewController *)interstitial;
+- (void)interstitialDidAppear:(MPInterstitialViewController *)interstitial;
+- (void)interstitialWillDisappear:(MPInterstitialViewController *)interstitial;
+- (void)interstitialDidDisappear:(MPInterstitialViewController *)interstitial;
+- (void)interstitialDidReceiveTapEvent:(MPInterstitialViewController *)interstitial;
+- (void)interstitialWillLeaveApplication:(MPInterstitialViewController *)interstitial;
 
 @optional
 - (CLLocation *)location;

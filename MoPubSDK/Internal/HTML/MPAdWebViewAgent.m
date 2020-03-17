@@ -1,23 +1,24 @@
 //
 //  MPAdWebViewAgent.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
-#import <WebKit/WebKit.h>
 #import "MPAdWebViewAgent.h"
 #import "MPAdConfiguration.h"
 #import "MPGlobal.h"
 #import "MPLogging.h"
 #import "MPAdDestinationDisplayAgent.h"
 #import "NSURL+MPAdditions.h"
+#import "UIWebView+MPAdditions.h"
 #import "MPWebView.h"
 #import "MPCoreInstanceProvider.h"
 #import "MPUserInteractionGestureRecognizer.h"
 #import "NSJSONSerialization+MPAdditions.h"
 #import "NSURL+MPAdditions.h"
+#import "MPInternalUtils.h"
 #import "MPAPIEndPoints.h"
 #import "MoPub.h"
 #import "MPViewabilityTracker.h"
@@ -27,27 +28,37 @@
 #define NSFoundationVersionNumber_iOS_6_1 993.00
 #endif
 
+#define MPOffscreenWebViewNeedsRenderingWorkaround() (floor(NSFoundationVersionNumber) > NSFoundationVersionNumber_iOS_6_1)
+
 @interface MPAdWebViewAgent () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) MPAdConfiguration *configuration;
-@property (nonatomic, strong) id<MPAdDestinationDisplayAgent> destinationDisplayAgent;
+@property (nonatomic, strong) MPAdDestinationDisplayAgent *destinationDisplayAgent;
 @property (nonatomic, assign) BOOL shouldHandleRequests;
 @property (nonatomic, strong) id<MPAdAlertManagerProtocol> adAlertManager;
 @property (nonatomic, assign) BOOL userInteractedWithWebView;
 @property (nonatomic, strong) MPUserInteractionGestureRecognizer *userInteractionRecognizer;
 @property (nonatomic, assign) CGRect frame;
 @property (nonatomic, strong, readwrite) MPViewabilityTracker *viewabilityTracker;
-@property (nonatomic, assign) BOOL didFireClickImpression;
 
 - (void)performActionForMoPubSpecificURL:(NSURL *)URL;
-- (BOOL)shouldIntercept:(NSURL *)URL navigationType:(WKNavigationType)navigationType;
+- (BOOL)shouldIntercept:(NSURL *)URL navigationType:(UIWebViewNavigationType)navigationType;
 - (void)interceptURL:(NSURL *)URL;
 
 @end
 
 @implementation MPAdWebViewAgent
 
-- (id)initWithAdWebViewFrame:(CGRect)frame delegate:(id<MPAdWebViewAgentDelegate>)delegate
+@synthesize configuration = _configuration;
+@synthesize delegate = _delegate;
+@synthesize destinationDisplayAgent = _destinationDisplayAgent;
+@synthesize shouldHandleRequests = _shouldHandleRequests;
+@synthesize view = _view;
+@synthesize adAlertManager = _adAlertManager;
+@synthesize userInteractedWithWebView = _userInteractedWithWebView;
+@synthesize userInteractionRecognizer = _userInteractionRecognizer;
+
+- (id)initWithAdWebViewFrame:(CGRect)frame delegate:(id<MPAdWebViewAgentDelegate>)delegate;
 {
     self = [super init];
     if (self) {
@@ -56,7 +67,6 @@
         self.destinationDisplayAgent = [MPAdDestinationDisplayAgent agentWithDelegate:self];
         self.delegate = delegate;
         self.shouldHandleRequests = YES;
-        self.didFireClickImpression = NO;
         self.adAlertManager = [[MPCoreInstanceProvider sharedProvider] buildMPAdAlertManagerWithDelegate:self];
 
         self.userInteractionRecognizer = [[MPUserInteractionGestureRecognizer alloc] initWithTarget:self action:@selector(handleInteraction:)];
@@ -85,7 +95,7 @@
 
 #pragma mark - <UIGestureRecognizerDelegate>
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer;
 {
     return YES;
 }
@@ -122,7 +132,7 @@
     // Ignore server configuration size for interstitials. At this point our web view
     // is sized correctly for the device's screen. Currently the server sends down values for a 3.5in
     // screen, and they do not size correctly on a 4in screen.
-    if (configuration.isFullscreenAd == false) {
+    if (configuration.adType != MPAdTypeInterstitial) {
         if ([configuration hasPreferredSize]) {
             CGRect frame = self.view.frame;
             frame.size.width = configuration.preferredSize.width;
@@ -132,6 +142,7 @@
     }
 
     [self.view mp_setScrollable:NO];
+    [self.view disableJavaScriptDialogs];
 
     // Initialize viewability trackers before loading self.view
     [self init3rdPartyViewabilityTrackers];
@@ -208,9 +219,8 @@
 
 #pragma mark - <MPWebViewDelegate>
 
-- (BOOL)webView:(MPWebView *)webView
-shouldStartLoadWithRequest:(NSURLRequest *)request
- navigationType:(WKNavigationType)navigationType
+- (BOOL)webView:(MPWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request
+ navigationType:(UIWebViewNavigationType)navigationType
 {
     if (!self.shouldHandleRequests) {
         return NO;
@@ -238,7 +248,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request
 
 - (void)webViewDidStartLoad:(MPWebView *)webView
 {
-    // no op
+    [self.view disableJavaScriptDialogs];
 }
 
 #pragma mark - MoPub-specific URL handlers
@@ -257,17 +267,19 @@ shouldStartLoadWithRequest:(NSURLRequest *)request
             [self.delegate adDidFailToLoadAd:self.view];
             break;
         default:
-            MPLogInfo(@"MPAdWebView - unsupported MoPub URL: %@", [URL absoluteString]);
+            MPLogWarn(@"MPAdWebView - unsupported MoPub URL: %@", [URL absoluteString]);
             break;
     }
 }
 
 #pragma mark - URL Interception
-- (BOOL)shouldIntercept:(NSURL *)URL navigationType:(WKNavigationType)navigationType
+- (BOOL)shouldIntercept:(NSURL *)URL navigationType:(UIWebViewNavigationType)navigationType
 {
-    if (navigationType == WKNavigationTypeLinkActivated) {
+    if ([URL mp_hasTelephoneScheme] || [URL mp_hasTelephonePromptScheme]) {
         return YES;
-    } else if (navigationType == WKNavigationTypeOther && self.userInteractedWithWebView) {
+    } else if (navigationType == UIWebViewNavigationTypeLinkClicked) {
+        return YES;
+    } else if (navigationType == UIWebViewNavigationTypeOther && self.userInteractedWithWebView) {
         return YES;
     } else {
         return NO;
@@ -277,9 +289,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request
 - (void)interceptURL:(NSURL *)URL
 {
     NSURL *redirectedURL = URL;
-    if (self.configuration.clickTrackingURL && !self.didFireClickImpression) {
-        self.didFireClickImpression = YES; // fire click impression only once
-
+    if (self.configuration.clickTrackingURL) {
         NSString *path = [NSString stringWithFormat:@"%@&r=%@",
                           self.configuration.clickTrackingURL.absoluteString,
                           [[URL absoluteString] mp_URLEncodedString]];
@@ -293,10 +303,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request
 
 - (void)init3rdPartyViewabilityTrackers
 {
-    self.viewabilityTracker = [[MPViewabilityTracker alloc]
-                               initWithWebView:self.view
-                               isVideo:self.configuration.isVastVideoPlayer
-                               startTrackingImmediately:[self shouldStartViewabilityDuringInitialization]];
+    self.viewabilityTracker = [[MPViewabilityTracker alloc] initWithAdView:self.view isVideo:self.configuration.isVastVideoPlayer startTrackingImmediately:[self shouldStartViewabilityDuringInitialization]];
 }
 
 - (BOOL)shouldStartViewabilityDuringInitialization
@@ -312,7 +319,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request
 
 - (BOOL)isInterstitialAd
 {
-    return self.configuration.isFullscreenAd;
+    return (self.configuration.adType == MPAdTypeInterstitial);
 }
 
 - (void)initAdAlertManager
@@ -322,6 +329,51 @@ shouldStartLoadWithRequest:(NSURLRequest *)request
     self.adAlertManager.targetAdView = self.view;
     self.adAlertManager.location = [self.delegate location];
     [self.adAlertManager beginMonitoringAlerts];
+}
+
+- (void)rotateToOrientation:(UIInterfaceOrientation)orientation
+{
+    [self forceRedraw];
+}
+
+- (void)forceRedraw
+{
+    UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
+    int angle = -1;
+    switch (orientation) {
+        case UIInterfaceOrientationPortrait: angle = 0; break;
+        case UIInterfaceOrientationLandscapeLeft: angle = 90; break;
+        case UIInterfaceOrientationLandscapeRight: angle = -90; break;
+        case UIInterfaceOrientationPortraitUpsideDown: angle = 180; break;
+        default: break;
+    }
+
+    if (angle == -1) return;
+
+    // UIWebView doesn't seem to fire the 'orientationchange' event upon rotation, so we do it here.
+    NSString *orientationEventScript = [NSString stringWithFormat:
+                                        @"window.__defineGetter__('orientation',function(){return %d;});"
+                                        @"(function(){ var evt = document.createEvent('Events');"
+                                        @"evt.initEvent('orientationchange',true,true);window.dispatchEvent(evt);})();",
+                                        angle];
+    [self.view stringByEvaluatingJavaScriptFromString:orientationEventScript];
+
+    // XXX: In iOS 7, off-screen UIWebViews will fail to render certain image creatives.
+    // Specifically, creatives that only contain an <img> tag whose src attribute uses a 302
+    // redirect will not be rendered at all. One workaround is to temporarily change the web view's
+    // internal contentInset property; this seems to force the web view to re-draw.
+    if (MPOffscreenWebViewNeedsRenderingWorkaround()) {
+        if ([self.view respondsToSelector:@selector(scrollView)]) {
+            UIScrollView *scrollView = self.view.scrollView;
+            UIEdgeInsets originalInsets = scrollView.contentInset;
+            UIEdgeInsets newInsets = UIEdgeInsetsMake(originalInsets.top + 1,
+                                                      originalInsets.left,
+                                                      originalInsets.bottom,
+                                                      originalInsets.right);
+            scrollView.contentInset = newInsets;
+            scrollView.contentInset = originalInsets;
+        }
+    }
 }
 
 @end

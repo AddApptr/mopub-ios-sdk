@@ -1,7 +1,7 @@
 //
 //  MPRewardedVideoAdapter+Testing.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -10,13 +10,13 @@
 
 @interface MPRewardedVideoAdapter (Testing)
 
-- (void)rewardedVideoDidLoadAdForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
+- (void)rewardedVideoDidLoadAdForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
 
 @property (nonatomic, strong) MPAdConfiguration *configuration;
 @property (nonatomic, assign) BOOL hasTrackedImpression;
 @property (nonatomic, assign) BOOL hasExpired;
 @property (nonatomic, copy) NSString * customData;
-@property (nonatomic, strong) id<MPRewardedVideoCustomEvent> rewardedVideoCustomEvent;
+@property (nonatomic, strong) MPRewardedVideoCustomEvent *rewardedVideoCustomEvent;
 
 - (void)startTimeoutTimer;
 

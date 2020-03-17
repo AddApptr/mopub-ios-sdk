@@ -1,7 +1,7 @@
 //
 //  MPConsentStatus+Description.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -13,14 +13,13 @@ public extension MPConsentStatus {
     /**
      Human readable description of the status.
      */
-    var description: String {
+    public var description: String {
         switch self {
         case .consented: return "Consented"
         case .denied: return "Denied"
         case .doNotTrack: return "Do not track"
         case .potentialWhitelist: return "Potentially whitelisted"
         case .unknown: return "Unknown"
-        @unknown default: fatalError("\(#function) unexpected enum case")
         }
     }
 }

@@ -1,7 +1,7 @@
 //
 //  MPConsentManagerTests.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -38,22 +38,22 @@
     BOOL success = NO;
 
     // Consented
-    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"Unit test: Consented" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"Unit test: Consented" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
 
     // Denied
-    success = [manager setCurrentStatus:MPConsentStatusDenied reason:@"Unit test: Denied" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusDenied reason:@"Unit test: Denied" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
 
     // Unknown
-    success = [manager setCurrentStatus:MPConsentStatusUnknown reason:@"Unit test: Unknown" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusUnknown reason:@"Unit test: Unknown" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusUnknown);
 
     // Do not track
-    success = [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"Unit test: Do not track" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"Unit test: Do not track" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusDoNotTrack);
 }
@@ -63,12 +63,12 @@
     BOOL success = NO;
 
     // Consented
-    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"Unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"Unit test" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
 
     // Update with old time stamp
-    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"Set again" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"Set again" shouldBroadcast:YES];
     XCTAssertFalse(success);
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
     XCTAssert([manager.lastChangedReason isEqualToString:@"Unit test"]);
@@ -431,7 +431,7 @@
     XCTAssertTrue(success);
 
     // Set to potential whitelist
-    success = [manager setCurrentStatus:MPConsentStatusPotentialWhitelist reason:@"unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusPotentialWhitelist reason:@"unit test" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusPotentialWhitelist);
     XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
@@ -526,11 +526,10 @@
     // Deny consent
     [manager revokeConsent];
 
-    // Due to incremental consent, the consented fields will be updated on a transition to denied.
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
+    XCTAssertNil(manager.consentedIabVendorList);
+    XCTAssertNil(manager.consentedPrivacyPolicyVersion);
+    XCTAssertNil(manager.consentedVendorListVersion);
 }
 
 - (void)testTransitionToDoNotTrack {
@@ -561,7 +560,7 @@
     XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
 
     // Do not track
-    [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"stop tracking unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"stop tracking unit test" shouldBroadcast:YES];
 
     XCTAssert(manager.currentStatus == MPConsentStatusDoNotTrack);
     XCTAssertNil(manager.consentedIabVendorList);
@@ -598,7 +597,7 @@
     XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
 
     // Do not track
-    [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"stop tracking unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"stop tracking unit test" shouldBroadcast:YES];
 
     XCTAssert(manager.currentStatus == MPConsentStatusDoNotTrack);
     XCTAssertNil(manager.consentedIabVendorList);
@@ -633,14 +632,13 @@
     // Set consent to deny.
     [manager revokeConsent];
 
-    // Due to incremental consent, the consented fields will be updated on a transition to denied.
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
+    XCTAssertNil(manager.consentedIabVendorList);
+    XCTAssertNil(manager.consentedPrivacyPolicyVersion);
+    XCTAssertNil(manager.consentedVendorListVersion);
 
     // Do not track
-    [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"stop tracking unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    [manager setCurrentStatus:MPConsentStatusDoNotTrack reason:@"stop tracking unit test" shouldBroadcast:YES];
 
     XCTAssert(manager.currentStatus == MPConsentStatusDoNotTrack);
     XCTAssertNil(manager.consentedIabVendorList);
@@ -652,8 +650,6 @@
     [manager checkForDoNotTrackAndTransition];
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
 }
-
-#pragma mark - Incremental Consent
 
 - (void)testReacquireConsent {
     NSDictionary * parameters = @{
@@ -702,17 +698,17 @@
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
     XCTAssertFalse(manager.isConsentNeeded);
 
-    // Server now says to reacquire consent, with state change
+    // Server now says to reacquire consent, but no state change
     NSDictionary * after = @{
                              @"is_whitelisted": @"1",
                              @"is_gdpr_region": @"1",
                              @"reacquire_consent": @"1",
                              @"call_again_after_secs": @"10",
                              @"current_privacy_policy_link": @"http://www.mopub.com/privacy",
-                             @"current_privacy_policy_version": @"7.1.2",
+                             @"current_privacy_policy_version": @"3.0.0",
                              @"current_vendor_list_link": @"http://www.mopub.com/vendors",
-                             @"current_vendor_list_version": @"19.1.3",
-                             @"current_vendor_list_iab_format": @"zzzzz",
+                             @"current_vendor_list_version": @"4.0.0",
+                             @"current_vendor_list_iab_format": @"yyyyy",
                              @"current_vendor_list_iab_hash": @"hash",
                              };
     success = [manager updateConsentStateWithParameters:after];
@@ -720,20 +716,10 @@
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
     XCTAssertTrue(manager.isConsentNeeded);
 
-    // Verify that original consented versions are unchanged
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
     // Grant consent again
     [manager grantConsent];
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
     XCTAssertFalse(manager.isConsentNeeded);
-
-    // Verify that consented versions have updated
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"zzzzz"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"7.1.2"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"19.1.3"]);
 }
 
 - (void)testTransitionToReacquireConsentNo {
@@ -759,17 +745,17 @@
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
     XCTAssertFalse(manager.isConsentNeeded);
 
-    // Server now says to reacquire consent, with state change
+    // Server now says to reacquire consent, but no state change
     NSDictionary * after = @{
                              @"is_whitelisted": @"1",
                              @"is_gdpr_region": @"1",
                              @"reacquire_consent": @"1",
                              @"call_again_after_secs": @"10",
                              @"current_privacy_policy_link": @"http://www.mopub.com/privacy",
-                             @"current_privacy_policy_version": @"7.1.2",
+                             @"current_privacy_policy_version": @"3.0.0",
                              @"current_vendor_list_link": @"http://www.mopub.com/vendors",
-                             @"current_vendor_list_version": @"19.1.3",
-                             @"current_vendor_list_iab_format": @"zzzzz",
+                             @"current_vendor_list_version": @"4.0.0",
+                             @"current_vendor_list_iab_format": @"yyyyy",
                              @"current_vendor_list_iab_hash": @"hash",
                              };
     success = [manager updateConsentStateWithParameters:after];
@@ -777,144 +763,10 @@
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
     XCTAssertTrue(manager.isConsentNeeded);
 
-    // Verify that original consented versions are unchanged
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
     // Deny consent
     [manager revokeConsent];
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
     XCTAssertFalse(manager.isConsentNeeded);
-
-    // Verify that consented versions have updated
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"zzzzz"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"7.1.2"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"19.1.3"]);
-}
-
-- (void)testTransitionFromNoToReacquireConsentYes {
-    NSDictionary * before = @{
-                              @"is_whitelisted": @"1",
-                              @"is_gdpr_region": @"1",
-                              @"call_again_after_secs": @"10",
-                              @"current_privacy_policy_link": @"http://www.mopub.com/privacy",
-                              @"current_privacy_policy_version": @"3.0.0",
-                              @"current_vendor_list_link": @"http://www.mopub.com/vendors",
-                              @"current_vendor_list_version": @"4.0.0",
-                              @"current_vendor_list_iab_format": @"yyyyy",
-                              @"current_vendor_list_iab_hash": @"hash",
-                              };
-
-    // Update consent
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-    BOOL success = [manager updateConsentStateWithParameters:before];
-    XCTAssertTrue(success);
-
-    // Deny consent
-    [manager revokeConsent];
-    XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssertFalse(manager.isConsentNeeded);
-
-    // Verify that consented versions are saved
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
-    // Server now says to reacquire consent, with state change
-    NSDictionary * after = @{
-                             @"is_whitelisted": @"1",
-                             @"is_gdpr_region": @"1",
-                             @"reacquire_consent": @"1",
-                             @"call_again_after_secs": @"10",
-                             @"current_privacy_policy_link": @"http://www.mopub.com/privacy",
-                             @"current_privacy_policy_version": @"7.1.2",
-                             @"current_vendor_list_link": @"http://www.mopub.com/vendors",
-                             @"current_vendor_list_version": @"19.1.3",
-                             @"current_vendor_list_iab_format": @"zzzzz",
-                             @"current_vendor_list_iab_hash": @"hash",
-                             };
-    success = [manager updateConsentStateWithParameters:after];
-    XCTAssertTrue(success);
-    XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssertTrue(manager.isConsentNeeded);
-
-    // Verify that original consented versions are unchanged
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
-    // Grant consent again
-    [manager grantConsent];
-    XCTAssert(manager.currentStatus == MPConsentStatusConsented);
-    XCTAssertFalse(manager.isConsentNeeded);
-
-    // Verify that consented versions have updated
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"zzzzz"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"7.1.2"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"19.1.3"]);
-}
-
-- (void)testTransitionFromNoToReacquireConsentNo {
-    NSDictionary * before = @{
-                              @"is_whitelisted": @"1",
-                              @"is_gdpr_region": @"1",
-                              @"call_again_after_secs": @"10",
-                              @"current_privacy_policy_link": @"http://www.mopub.com/privacy",
-                              @"current_privacy_policy_version": @"3.0.0",
-                              @"current_vendor_list_link": @"http://www.mopub.com/vendors",
-                              @"current_vendor_list_version": @"4.0.0",
-                              @"current_vendor_list_iab_format": @"yyyyy",
-                              @"current_vendor_list_iab_hash": @"hash",
-                              };
-
-    // Update consent
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-    BOOL success = [manager updateConsentStateWithParameters:before];
-    XCTAssertTrue(success);
-
-    // Deny consent
-    [manager revokeConsent];
-    XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssertFalse(manager.isConsentNeeded);
-
-    // Verify that consented versions are saved
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
-    // Server now says to reacquire consent, with state change
-    NSDictionary * after = @{
-                             @"is_whitelisted": @"1",
-                             @"is_gdpr_region": @"1",
-                             @"reacquire_consent": @"1",
-                             @"call_again_after_secs": @"10",
-                             @"current_privacy_policy_link": @"http://www.mopub.com/privacy",
-                             @"current_privacy_policy_version": @"7.1.2",
-                             @"current_vendor_list_link": @"http://www.mopub.com/vendors",
-                             @"current_vendor_list_version": @"19.1.3",
-                             @"current_vendor_list_iab_format": @"zzzzz",
-                             @"current_vendor_list_iab_hash": @"hash",
-                             };
-    success = [manager updateConsentStateWithParameters:after];
-    XCTAssertTrue(success);
-    XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssertTrue(manager.isConsentNeeded);
-
-    // Verify that original consented versions are unchanged
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
-    // Deny consent
-    [manager revokeConsent];
-    XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-    XCTAssertFalse(manager.isConsentNeeded);
-
-    // Verify that consented versions have updated
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"zzzzz"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"7.1.2"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"19.1.3"]);
 }
 
 #pragma mark - forceIsGDPRApplicable property
@@ -1024,7 +876,7 @@
     XCTAssert(manager.currentStatus == MPConsentStatusUnknown);
 
     // Set to consented
-    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"unit test" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
 
@@ -1038,11 +890,9 @@
 
     // Assert that the consent status is denied
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-
-    // Due to incremental consent, the consented fields will be updated on a transition to denied.
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
+    XCTAssertNil(manager.consentedIabVendorList);
+    XCTAssertNil(manager.consentedPrivacyPolicyVersion);
+    XCTAssertNil(manager.consentedVendorListVersion);
 }
 
 - (void)testForceStatusForceConsentReset {
@@ -1065,7 +915,7 @@
     XCTAssert(manager.currentStatus == MPConsentStatusUnknown);
 
     // Set to consented
-    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"unit test" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
 
@@ -1104,7 +954,7 @@
     XCTAssert(manager.currentStatus == MPConsentStatusUnknown);
 
     // Set to consented
-    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusConsented reason:@"unit test" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusConsented);
 
@@ -1118,11 +968,9 @@
 
     // Assert that the consent status is denied
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-
-    // Due to incremental consent, the consented fields will be updated on a transition to denied.
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
+    XCTAssertNil(manager.consentedIabVendorList);
+    XCTAssertNil(manager.consentedPrivacyPolicyVersion);
+    XCTAssertNil(manager.consentedVendorListVersion);
 }
 
 - (void)testForceStatusForceDeniedFromUnknown {
@@ -1154,11 +1002,9 @@
 
     // Assert that the consent status is denied
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
-
-    // Due to incremental consent, the consented fields will be updated on a transition to denied.
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
+    XCTAssertNil(manager.consentedIabVendorList);
+    XCTAssertNil(manager.consentedPrivacyPolicyVersion);
+    XCTAssertNil(manager.consentedVendorListVersion);
 }
 
 - (void)testForceStatusForceUnknownFromDenied {
@@ -1181,16 +1027,11 @@
     XCTAssert(manager.currentStatus == MPConsentStatusUnknown);
 
     // Set to denied
-    success = [manager setCurrentStatus:MPConsentStatusDenied reason:@"unit test" statusWasReacquired:NO shouldBroadcast:YES];
+    success = [manager setCurrentStatus:MPConsentStatusDenied reason:@"unit test" shouldBroadcast:YES];
     XCTAssertTrue(success);
     XCTAssert(manager.currentStatus == MPConsentStatusDenied);
 
-    // Due to incremental consent, the consented fields will be updated on a transition to denied.
-    XCTAssert([manager.consentedIabVendorList isEqualToString:@"yyyyy"]);
-    XCTAssert([manager.consentedPrivacyPolicyVersion isEqualToString:@"3.0.0"]);
-    XCTAssert([manager.consentedVendorListVersion isEqualToString:@"4.0.0"]);
-
-    // Force Invalidate consent
+    // Force reacquire consent
     [manager forceStatusShouldForceExplicitNo:NO
                       shouldInvalidateConsent:YES
                        shouldReacquireConsent:NO
@@ -1268,6 +1109,23 @@
     XCTAssert([[syncUrl stringForPOSTDataKey:kConsentedVendorListVersionKey] isEqualToString:@"4.0.0"]);
     XCTAssert([[syncUrl stringForPOSTDataKey:kCachedIabVendorListHashKey] isEqualToString:@"hash"]);
     XCTAssert([[syncUrl stringForPOSTDataKey:kExtrasKey] isEqualToString:@"i'm extra!"]);
+}
+
+- (void)testAutomaticAdUnitIdPopulation {
+    MPConsentManager * manager = MPConsentManager.sharedManager;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+    // Intentially set the explicitly marked `nonnull` property to `nil` to
+    // simulate an uninitialized state.
+    manager.adUnitIdUsedForConsent = nil;
+#pragma clang diagnostic pop
+    XCTAssertNil(manager.adUnitIdUsedForConsent);
+
+    MPURL * url = [MPAdServerURLBuilder URLWithAdUnitID:@"abc123" keywords:nil userDataKeywords:nil location:nil];
+    XCTAssertNotNil(url);
+    XCTAssertNotNil(manager.adUnitIdUsedForConsent);
+    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:@"abc123"]);
 }
 
 #pragma mark - Macro Replacement
@@ -1351,14 +1209,14 @@
 }
 
 - (void)testIfaOldStatusNotConsentedNewStatusNotConsented {
-    [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusUnknown reason:@"Unit test: Consented" statusWasReacquired:NO shouldBroadcast:YES];
+    [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusUnknown reason:@"Unit test: Consented" shouldBroadcast:YES];
     NSString *ifa = [NSUserDefaults.standardUserDefaults stringForKey:kIfaForConsentStorageKey];
     XCTAssertNil(ifa);
 }
 
 - (void)testIfaOldStatusNotConsentedNewStatusConsented {
-    [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusUnknown reason:@"Unit test: Unknown" statusWasReacquired:NO shouldBroadcast:YES];
-    [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusConsented reason:@"Unit test: Consented" statusWasReacquired:NO shouldBroadcast:YES];
+    [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusUnknown reason:@"Unit test: Unknown" shouldBroadcast:YES];
+    [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusConsented reason:@"Unit test: Consented" shouldBroadcast:YES];
     NSString *ifa = [NSUserDefaults.standardUserDefaults stringForKey:kIfaForConsentStorageKey];
     XCTAssertNotNil(ifa);
 }
@@ -1368,7 +1226,6 @@
 - (void)testDialogWontLoadWithDNTOn {
     [MPConsentManager.sharedManager setCurrentStatus:MPConsentStatusDoNotTrack
                                               reason:@"Unit test: DNT"
-                                 statusWasReacquired:NO
                                      shouldBroadcast:YES];
 
     XCTestExpectation *expectation = [self expectationWithDescription:@"Wait for load to return"];
@@ -1426,235 +1283,6 @@
     XCTAssertNotNil(loadError);
     XCTAssert(loadError.code == MPConsentErrorCodeGDPRIsNotApplicable);
     XCTAssertFalse(MPConsentManager.sharedManager.isConsentDialogLoaded);
-}
-
-#pragma mark - Adunit ID Caching Mechanism
-
-- (void)testAdunitIDNotOverwrittenIfAnotherIsCached {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    NSString * cachedAdunitID = @"adunit ID";
-    [NSUserDefaults.standardUserDefaults setObject:cachedAdunitID forKey:kAdUnitIdUsedForConsentStorageKey];
-
-    // Check to make sure the cached value is returned
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:cachedAdunitID]);
-
-    // Attempt to set a different adunit ID
-    NSString * differentAdunitID = @"another adunit ID";
-    manager.adUnitIdUsedForConsent = differentAdunitID;
-
-    // Check to make sure the manager is still using the original adunit ID
-    XCTAssertFalse([manager.adUnitIdUsedForConsent isEqualToString:differentAdunitID]);
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:cachedAdunitID]);
-}
-
-- (void)testIsKnownGoodWillCache {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Make and set adunit ID as known good
-    NSString * adunitID = @"adunit ID";
-    [manager setAdUnitIdUsedForConsent:adunitID isKnownGood:YES];
-
-    // Check to make sure the ID populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it's cached
-    XCTAssert([adunitID isEqualToString:[NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]]);
-}
-
-- (void)testIsNotKnownGoodWillNotCache {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Make and set adunit ID
-    NSString * adunitID = @"adunit ID";
-    [manager setAdUnitIdUsedForConsent:adunitID isKnownGood:NO];
-
-    // Check to make sure the ID populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it's not cached
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
-}
-
-- (void)testSettingDirectlyIsSameAsNotKnownGood {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Make and set adunit ID
-    NSString * adunitID = @"adunit ID";
-    manager.adUnitIdUsedForConsent = adunitID;
-
-    // Check to make sure the ID populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it's not cached
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
-}
-
-- (void)testSuccessfulSyncCachesAdunitID {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Make and set adunit ID
-    NSString * adunitID = @"adunit ID";
-    manager.adUnitIdUsedForConsent = adunitID;
-
-    // Check to make sure the ID populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it's not yet cached
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
-
-    // Simulate successful sync
-    [manager didFinishSynchronizationWithData:[NSData data]
-                           synchronizedStatus:@""
-                                   completion:^(NSError * error){}];
-
-    // Check to make sure the ID is still populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it is now cached
-    XCTAssert([adunitID isEqualToString:[NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]]);
-}
-
-- (void)testUnsuccessfulSyncDoesNotCacheAdunitID {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Make and set adunit ID
-    NSString * adunitID = @"adunit ID";
-    manager.adUnitIdUsedForConsent = adunitID;
-
-    // Check to make sure the ID populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it's not yet cached
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
-
-    // Simulate successful sync
-    [manager didFailSynchronizationWithError:nil
-                                  completion:^(NSError * error){}];
-
-    // Check to make sure the ID is still populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it is still not cached
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
-}
-
-- (void)testSuccessfulSyncDoesNotOverwritePreviouslyCachedAdunitID {
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Cache an adunit ID
-    NSString * cachedAdunitID = @"cached adunit ID";
-    [manager setAdUnitIdUsedForConsent:cachedAdunitID isKnownGood:YES];
-
-    // Make and set adunit ID
-    NSString * adunitID = @"adunit ID";
-    manager.adUnitIdUsedForConsent = adunitID;
-
-    // Check to make sure the cached ID is populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:cachedAdunitID]);
-    // Check to make sure it's cached
-    XCTAssert([cachedAdunitID isEqualToString:[NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]]);
-
-    // Simulate successful sync
-    [manager didFinishSynchronizationWithData:[NSData data]
-                           synchronizedStatus:@""
-                                   completion:^(NSError * error){}];
-
-    // Check to make sure the cached ID is populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:cachedAdunitID]);
-    // Check to make sure it's cached
-    XCTAssert([cachedAdunitID isEqualToString:[NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]]);
-}
-
-- (void)testCachedAdunitIDClears {
-    /*
-     Cache a new adunit ID
-     */
-    MPConsentManager * manager = MPConsentManager.sharedManager;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-    // Intentially set the explicitly marked `nonnull` property to `nil` to
-    // simulate an uninitialized state.
-    manager.adUnitIdUsedForConsent = nil;
-#pragma clang diagnostic pop
-    // Be sure the adunit ID is presently nil
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-
-    // Make and set adunit ID
-    NSString * adunitID = @"adunit ID";
-    manager.adUnitIdUsedForConsent = adunitID;
-
-    // Check to make sure the ID populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it's not yet cached
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
-
-    // Simulate successful sync
-    [manager didFinishSynchronizationWithData:[NSData data]
-                           synchronizedStatus:@""
-                                   completion:^(NSError * error){}];
-
-    // Check to make sure the ID is still populated
-    XCTAssert([manager.adUnitIdUsedForConsent isEqualToString:adunitID]);
-    // Check to make sure it is now cached
-    XCTAssert([adunitID isEqualToString:[NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]]);
-
-
-    /*
-     Clear the adunit ID and make sure it's totally cleared
-     */
-    [manager clearAdUnitIdUsedForConsent];
-    XCTAssertNil(manager.adUnitIdUsedForConsent);
-    XCTAssertNil([NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey]);
 }
 
 @end

@@ -1,14 +1,13 @@
 //
 //  MPHTMLBannerCustomEvent.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPHTMLBannerCustomEvent.h"
 #import "MPWebView.h"
-#import "MPError.h"
 #import "MPLogging.h"
 #import "MPAdConfiguration.h"
 #import "MPAnalyticsTracker.h"
@@ -21,29 +20,31 @@
 
 @implementation MPHTMLBannerCustomEvent
 
-// Explicitly `@synthesize` here to fix a "-Wobjc-property-synthesis" warning because super class `delegate` is
-// `id<MPBannerCustomEventDelegate>` and this `delegate` is `id<MPPrivateInterstitialCustomEventDelegate>`
-@synthesize delegate;
+@synthesize bannerAgent = _bannerAgent;
 
 - (BOOL)enableAutomaticImpressionAndClickTracking
 {
     return NO;
 }
 
-- (void)requestAdWithSize:(CGSize)size customEventInfo:(NSDictionary *)info adMarkup:(NSString *)adMarkup
+- (void)requestAdWithSize:(CGSize)size customEventInfo:(NSDictionary *)info
 {
-    MPAdConfiguration * configuration = self.delegate.configuration;
-
-    MPLogAdEvent([MPLogEvent adLoadAttemptForAdapter:NSStringFromClass(configuration.customEventClass) dspCreativeId:configuration.dspCreativeId dspName:nil], self.adUnitId);
+    MPLogInfo(@"Loading MoPub HTML banner");
+    MPLogTrace(@"Loading banner with HTML source: %@", [[self.delegate configuration] adResponseHTMLString]);
 
     CGRect adWebViewFrame = CGRectMake(0, 0, size.width, size.height);
     self.bannerAgent = [[MPAdWebViewAgent alloc] initWithAdWebViewFrame:adWebViewFrame delegate:self];
-    [self.bannerAgent loadConfiguration:configuration];
+    [self.bannerAgent loadConfiguration:[self.delegate configuration]];
 }
 
 - (void)dealloc
 {
     self.bannerAgent.delegate = nil;
+}
+
+- (void)rotateToOrientation:(UIInterfaceOrientation)newOrientation
+{
+    [self.bannerAgent rotateToOrientation:newOrientation];
 }
 
 #pragma mark - MPAdWebViewAgentDelegate
@@ -65,17 +66,14 @@
 
 - (void)adDidFinishLoadingAd:(MPWebView *)ad
 {
-    MPLogAdEvent([MPLogEvent adLoadSuccessForAdapter:NSStringFromClass(self.class)], self.adUnitId);
+    MPLogInfo(@"MoPub HTML banner did load");
     [self.delegate bannerCustomEvent:self didLoadAd:ad];
 }
 
 - (void)adDidFailToLoadAd:(MPWebView *)ad
 {
-    NSString * message = [NSString stringWithFormat:@"Failed to load creative:\n%@", self.delegate.configuration.adResponseHTMLString];
-    NSError * error = [NSError errorWithCode:MOPUBErrorAdapterFailedToLoadAd localizedDescription:message];
-
-    MPLogAdEvent([MPLogEvent adLoadFailedForAdapter:NSStringFromClass(self.class) error:error], self.adUnitId);
-    [self.delegate bannerCustomEvent:self didFailToLoadAdWithError:error];
+    MPLogInfo(@"MoPub HTML banner did fail");
+    [self.delegate bannerCustomEvent:self didFailToLoadAdWithError:nil];
 }
 
 - (void)adDidClose:(MPWebView *)ad
@@ -85,16 +83,19 @@
 
 - (void)adActionWillBegin:(MPWebView *)ad
 {
+    MPLogInfo(@"MoPub HTML banner will begin action");
     [self.delegate bannerCustomEventWillBeginAction:self];
 }
 
 - (void)adActionDidFinish:(MPWebView *)ad
 {
+    MPLogInfo(@"MoPub HTML banner did finish action");
     [self.delegate bannerCustomEventDidFinishAction:self];
 }
 
 - (void)adActionWillLeaveApplication:(MPWebView *)ad
 {
+    MPLogInfo(@"MoPub HTML banner will leave application");
     [self.delegate bannerCustomEventWillLeaveApplication:self];
 }
 

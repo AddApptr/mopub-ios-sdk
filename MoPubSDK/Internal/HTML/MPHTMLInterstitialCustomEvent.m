@@ -1,16 +1,14 @@
 //
 //  MPHTMLInterstitialCustomEvent.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPHTMLInterstitialCustomEvent.h"
-#import "MPHTMLInterstitialViewController.h"
-#import "MPAdConfiguration.h"
-#import "MPError.h"
 #import "MPLogging.h"
+#import "MPAdConfiguration.h"
 
 @interface MPHTMLInterstitialCustomEvent ()
 
@@ -19,14 +17,9 @@
 
 @end
 
-@interface MPHTMLInterstitialCustomEvent (MPInterstitialViewControllerDelegate) <MPInterstitialViewControllerDelegate>
-@end
-
 @implementation MPHTMLInterstitialCustomEvent
 
-// Explicitly `@synthesize` here to fix a "-Wobjc-property-synthesis" warning because super class `delegate` is
-// `id<MPInterstitialCustomEventDelegate>` and this `delegate` is `id<MPPrivateInterstitialCustomEventDelegate>`
-@synthesize delegate;
+@synthesize interstitial = _interstitial;
 
 - (BOOL)enableAutomaticImpressionAndClickTracking
 {
@@ -37,10 +30,11 @@
     return NO;
 }
 
-- (void)requestInterstitialWithCustomEventInfo:(NSDictionary *)info adMarkup:(NSString *)adMarkup
+- (void)requestInterstitialWithCustomEventInfo:(NSDictionary *)info
 {
-    MPAdConfiguration * configuration = self.delegate.configuration;
-    MPLogAdEvent([MPLogEvent adLoadAttemptForAdapter:NSStringFromClass(self.class) dspCreativeId:configuration.dspCreativeId dspName:nil], self.adUnitId);
+    MPLogInfo(@"Loading MoPub HTML interstitial");
+    MPAdConfiguration *configuration = [self.delegate configuration];
+    MPLogTrace(@"Loading HTML interstitial with source: %@", [configuration adResponseHTMLString]);
 
     self.interstitial = [[MPHTMLInterstitialViewController alloc] init];
     self.interstitial.delegate = self;
@@ -51,22 +45,10 @@
 
 - (void)showInterstitialFromRootViewController:(UIViewController *)rootViewController
 {
-    MPLogAdEvent([MPLogEvent adShowAttemptForAdapter:NSStringFromClass(self.class)], self.adUnitId);
-    [self.interstitial presentInterstitialFromViewController:rootViewController complete:^(NSError * error) {
-        if (error != nil) {
-            MPLogAdEvent([MPLogEvent adShowFailedForAdapter:NSStringFromClass(self.class) error:error], self.adUnitId);
-        }
-        else {
-            MPLogAdEvent([MPLogEvent adShowSuccessForAdapter:NSStringFromClass(self.class)], self.adUnitId);
-        }
-    }];
+    [self.interstitial presentInterstitialFromViewController:rootViewController];
 }
 
-@end
-
 #pragma mark - MPInterstitialViewControllerDelegate
-
-@implementation MPHTMLInterstitialCustomEvent (MPInterstitialViewControllerDelegate)
 
 - (CLLocation *)location
 {
@@ -78,28 +60,27 @@
     return [self.delegate adUnitId];
 }
 
-- (void)interstitialDidLoadAd:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialDidLoadAd:(MPInterstitialViewController *)interstitial
 {
-    MPLogAdEvent([MPLogEvent adLoadSuccessForAdapter:NSStringFromClass(self.class)], self.adUnitId);
+    MPLogInfo(@"MoPub HTML interstitial did load");
     [self.delegate interstitialCustomEvent:self didLoadAd:self.interstitial];
 }
 
-- (void)interstitialDidFailToLoadAd:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialDidFailToLoadAd:(MPInterstitialViewController *)interstitial
 {
-    NSString * message = [NSString stringWithFormat:@"Failed to load creative:\n%@", self.delegate.configuration.adResponseHTMLString];
-    NSError * error = [NSError errorWithCode:MOPUBErrorAdapterFailedToLoadAd localizedDescription:message];
-
-    MPLogAdEvent([MPLogEvent adLoadFailedForAdapter:NSStringFromClass(self.class) error:error], self.adUnitId);
-    [self.delegate interstitialCustomEvent:self didFailToLoadAdWithError:error];
+    MPLogInfo(@"MoPub HTML interstitial did fail");
+    [self.delegate interstitialCustomEvent:self didFailToLoadAdWithError:nil];
 }
 
-- (void)interstitialWillAppear:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialWillAppear:(MPInterstitialViewController *)interstitial
 {
+    MPLogInfo(@"MoPub HTML interstitial will appear");
     [self.delegate interstitialCustomEventWillAppear:self];
 }
 
-- (void)interstitialDidAppear:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialDidAppear:(MPInterstitialViewController *)interstitial
 {
+    MPLogInfo(@"MoPub HTML interstitial did appear");
     [self.delegate interstitialCustomEventDidAppear:self];
 
     if (!self.trackedImpression) {
@@ -108,13 +89,15 @@
     }
 }
 
-- (void)interstitialWillDisappear:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialWillDisappear:(MPInterstitialViewController *)interstitial
 {
+    MPLogInfo(@"MoPub HTML interstitial will disappear");
     [self.delegate interstitialCustomEventWillDisappear:self];
 }
 
-- (void)interstitialDidDisappear:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialDidDisappear:(MPInterstitialViewController *)interstitial
 {
+    MPLogInfo(@"MoPub HTML interstitial did disappear");
     [self.delegate interstitialCustomEventDidDisappear:self];
 
     // Deallocate the interstitial as we don't need it anymore. If we don't deallocate the interstitial after dismissal,
@@ -123,13 +106,15 @@
     self.interstitial = nil;
 }
 
-- (void)interstitialDidReceiveTapEvent:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialDidReceiveTapEvent:(MPInterstitialViewController *)interstitial
 {
+    MPLogInfo(@"MoPub HTML interstitial did receive tap event");
     [self.delegate interstitialCustomEventDidReceiveTapEvent:self];
 }
 
-- (void)interstitialWillLeaveApplication:(id<MPInterstitialViewController>)interstitial
+- (void)interstitialWillLeaveApplication:(MPInterstitialViewController *)interstitial
 {
+    MPLogInfo(@"MoPub HTML interstitial will leave application");
     [self.delegate interstitialCustomEventWillLeaveApplication:self];
 }
 

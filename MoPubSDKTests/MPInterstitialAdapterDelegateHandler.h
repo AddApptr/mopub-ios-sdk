@@ -1,7 +1,7 @@
 //
 //  MPInterstitialAdapterDelegateHandler.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -26,7 +26,6 @@ typedef void(^MPInterstitialAdapterDelegateHandlerErrorBlock)(MPBaseInterstitial
 @property (nonatomic, copy) MPInterstitialAdapterDelegateHandlerBlock didDisppear;
 @property (nonatomic, copy) MPInterstitialAdapterDelegateHandlerBlock didExpire;
 @property (nonatomic, copy) MPInterstitialAdapterDelegateHandlerBlock didReceiveTapEvent;
-@property (nonatomic, copy) MPInterstitialAdapterDelegateHandlerBlock didReceiveImpressionEvent;
 @property (nonatomic, copy) MPInterstitialAdapterDelegateHandlerBlock willLeaveApplication;
 
 @end

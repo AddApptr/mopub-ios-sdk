@@ -1,7 +1,7 @@
 //
 //  NativeAdTableViewController.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -50,12 +50,6 @@ class NativeAdTableViewController: UIViewController, AdViewController {
         
         // Set the title
         title = adUnit.name
-        
-        // Set the background color for Dark Mode
-        if #available(iOS 13.0, *) {
-            tableView.backgroundColor = .systemBackground
-            view.backgroundColor = .systemBackground
-        }
     }
     
     // MARK: - DisplayableAd
@@ -110,7 +104,9 @@ extension NativeAdTableViewController: UITableViewDataSource, UITableViewDelegat
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueCellFromNib(cellType: StatusTableViewCell.self)
+        guard let cell: StatusTableViewCell = tableView.mp_dequeueReusableCell(withIdentifier: StatusTableViewCell.reuseId, for: indexPath) as? StatusTableViewCell else {
+            return UITableViewCell()
+        }
         
         // Update the cell
         let fontName: String = dataSource.data[indexPath.row]

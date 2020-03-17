@@ -1,7 +1,7 @@
 //
 //  MPAdServerCommunicator.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -17,7 +17,6 @@
 #import "MPError.h"
 #import "MPHTTPNetworkSession.h"
 #import "MPLogging.h"
-#import "MPRateLimitManager.h"
 #import "MPURLRequest.h"
 
 // Multiple response JSON fields
@@ -33,8 +32,6 @@ static NSString * const kAdResonsesContentKey = @"content";
 @property (nonatomic, strong) NSURLSessionTask * task;
 @property (nonatomic, strong) NSDictionary *responseHeaders;
 @property (nonatomic) NSArray *topLevelJsonKeys;
-
-@property (nonatomic, readonly) BOOL isRateLimited;
 
 @end
 
@@ -64,7 +61,7 @@ static NSString * const kAdResonsesContentKey = @"content";
     self = [super init];
     if (self) {
         _delegate = delegate;
-        _topLevelJsonKeys = @[kNextUrlMetadataKey, kFormatMetadataKey];
+        _topLevelJsonKeys = @[kNextUrlMetadataKey];
     }
     return self;
 }
@@ -78,11 +75,6 @@ static NSString * const kAdResonsesContentKey = @"content";
 
 - (void)loadURL:(NSURL *)URL
 {
-    if (self.isRateLimited) {
-        [self didFailWithError:[NSError tooManyRequests]];
-        return;
-    }
-
     [self cancel];
 
     // Delete any cookies previous creatives have set before starting the load
@@ -96,15 +88,22 @@ static NSString * const kAdResonsesContentKey = @"content";
 
     // Generate request
     MPURLRequest * request = [[MPURLRequest alloc] initWithURL:URL];
-    MPLogEvent([MPLogEvent adRequestedWithRequest:request]);
+    MPLogInfo(@"Loading ad with MoPub server URL: %@", request);
 
     __weak __typeof__(self) weakSelf = self;
     self.task = [MPHTTPNetworkSession startTaskWithHttpRequest:request responseHandler:^(NSData * data, NSHTTPURLResponse * response) {
         // Capture strong self for the duration of this block.
         __typeof__(self) strongSelf = weakSelf;
 
+        // Status code indicates an error.
+        if (response.statusCode >= 400) {
+            [strongSelf didFailWithError:[strongSelf errorForStatusCode:response.statusCode]];
+            return;
+        }
+
         // Handle the response.
         [strongSelf didFinishLoadingWithData:data];
+
     } errorHandler:^(NSError * error) {
         // Capture strong self for the duration of this block.
         __typeof__(self) strongSelf = weakSelf;
@@ -128,9 +127,9 @@ static NSString * const kAdResonsesContentKey = @"content";
     if (configuration.beforeLoadURL != nil) {
         MPURLRequest * request = [MPURLRequest requestWithURL:configuration.beforeLoadURL];
         [MPHTTPNetworkSession startTaskWithHttpRequest:request responseHandler:^(NSData * _Nonnull data, NSHTTPURLResponse * _Nonnull response) {
-            MPLogDebug(@"Successfully sent before load URL");
+            MPLogTrace(@"Sucessfully sent before load URL");
         } errorHandler:^(NSError * _Nonnull error) {
-            MPLogInfo(@"Failed to send before load URL");
+            MPLogWarn(@"Failed to send before load URL");
         }];
     }
 }
@@ -144,20 +143,20 @@ static NSString * const kAdResonsesContentKey = @"content";
     for (NSURL * afterLoadUrl in afterLoadUrls) {
         MPURLRequest * request = [MPURLRequest requestWithURL:afterLoadUrl];
         [MPHTTPNetworkSession startTaskWithHttpRequest:request responseHandler:^(NSData * _Nonnull data, NSHTTPURLResponse * _Nonnull response) {
-            MPLogDebug(@"Successfully sent after load URL: %@", afterLoadUrl);
+            // no-op
         } errorHandler:^(NSError * _Nonnull error) {
             MPLogDebug(@"Failed to send after load URL: %@", afterLoadUrl);
         }];
     }
 }
 
-- (BOOL)isRateLimited {
-    return [[MPRateLimitManager sharedInstance] isRateLimitedForAdUnitId:self.delegate.adUnitId];
-}
-
 - (void)failLoadForSDKInit {
-    NSError *error = [NSError adLoadFailedBecauseSdkNotInitialized];
-    MPLogEvent([MPLogEvent error:error message:nil]);
+    NSString * errorString = @"Ad prevented from loading. Error: Ad requested before initializing MoPub SDK. The MoPub SDK requires initializeSdkWithConfiguration:completion: to be called on MoPub.sharedInstance before attempting to load ads. Please update your integration.";
+    MPLogError(errorString);
+
+    NSError *error = [NSError errorWithDomain:kMOPUBErrorDomain
+                                         code:MOPUBErrorSDKNotInitialized
+                                     userInfo:@{ NSLocalizedDescriptionKey : errorString }];
     [self didFailWithError:error];
 }
 
@@ -170,12 +169,6 @@ static NSString * const kAdResonsesContentKey = @"content";
 }
 
 - (void)didFinishLoadingWithData:(NSData *)data {
-    // In the event that the @c adUnitIdUsedForConsent from @c MPConsentManager is @c nil or malformed,
-    // we should populate it with this known good adunit ID. This is to cover any edge case where the
-    // publisher manages to initialize with no adunit ID or a malformed adunit ID.
-    // It is known good since this is the success callback from the ad request.
-    [MPConsentManager.sharedManager setAdUnitIdUsedForConsent:self.delegate.adUnitId isKnownGood:YES];
-
     // Headers from the original HTTP response are intentionally ignored as laid out
     // by the Client Side Waterfall design doc.
     //
@@ -197,28 +190,25 @@ static NSString * const kAdResonsesContentKey = @"content";
     NSError * error = nil;
     NSDictionary * json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&error];
     if (error) {
-        NSError * parseError = [NSError adResponseFailedToParseWithError:error];
-        MPLogEvent([MPLogEvent error:parseError message:nil]);
-        [self didFailWithError:parseError];
+        MPLogError(@"Failed to parse ad response JSON: %@", error.localizedDescription);
+        self.loading = NO;
+        [self.delegate communicatorDidFailWithError:error];
         return;
     }
 
-    MPLogEvent([MPLogEvent adRequestReceivedResponse:json]);
+    // Handle consent overrides and strip them out of the top level JSON response.
+    json = [self handleConsentOverrides:json];
 
-    // Handle ad server overrides and strip them out of the top level JSON response.
-    json = [self handleAdResponseOverrides:json];
-
-    // Add top level json attributes to each ad server response so MPAdConfiguration contains
-    // all attributes for an ad response.
     NSArray *responses = [self getFlattenJsonResponses:json keys:self.topLevelJsonKeys];
     if (responses == nil) {
-        NSError * noResponsesError = [NSError adResponsesNotFound];
-        MPLogEvent([MPLogEvent error:noResponsesError message:nil]);
-        [self didFailWithError:noResponsesError];
+        MPLogError(@"No ad responses");
+        self.loading = NO;
+        [self.delegate communicatorDidFailWithError:[MOPUBError errorWithCode:MOPUBErrorUnableToParseJSONAdResponse]];
         return;
     }
 
-    // Attempt to parse each ad response JSON into its corresponding MPAdConfiguration object.
+    MPLogInfo(@"There are %ld ad responses", responses.count);
+
     NSMutableArray<MPAdConfiguration *> * configurations = [NSMutableArray arrayWithCapacity:responses.count];
     for (NSDictionary * responseJson in responses) {
         // The `metadata` field is required and must contain at least one entry. The `content` field is optional.
@@ -226,24 +216,18 @@ static NSString * const kAdResonsesContentKey = @"content";
         NSDictionary * metadata = responseJson[kAdResonsesMetadataKey];
         NSData * content = [responseJson[kAdResonsesContentKey] dataUsingEncoding:NSUTF8StringEncoding];
         if (metadata == nil || (metadata != nil && metadata.count == 0)) {
-            MPLogInfo(@"The metadata field is either non-existent or empty");
+            MPLogError(@"The metadata field is either non-existent or empty");
             continue;
         }
 
-        MPAdConfiguration * configuration = [[MPAdConfiguration alloc] initWithMetadata:metadata data:content isFullscreenAd:self.delegate.isFullscreenAd];
+        MPAdConfiguration * configuration = [[MPAdConfiguration alloc] initWithMetadata:metadata data:content];
         if (configuration != nil) {
             [configurations addObject:configuration];
-        } else {
+        }
+        else {
             MPLogInfo(@"Failed to generate configuration from\nmetadata:\n%@\nbody:\n%@", metadata, responseJson[kAdResonsesContentKey]);
         }
     }
-
-    // Set up rate limiting (has no effect if backoffMs is 0)
-    NSInteger backoffMs = [json[kBackoffMsKey] integerValue];
-    NSString * backoffReason = json[kBackoffReasonKey];
-    [[MPRateLimitManager sharedInstance] setRateLimitTimerWithAdUnitId:self.delegate.adUnitId
-                                                          milliseconds:backoffMs
-                                                                reason:backoffReason];
 
     self.loading = NO;
     [self.delegate communicatorDidReceiveAdConfigurations:configurations];
@@ -261,37 +245,13 @@ static NSString * const kAdResonsesContentKey = @"content";
     NSMutableArray *flattenResponses = [NSMutableArray new];
     for (NSDictionary *response in responses) {
         NSMutableDictionary *flattenResponse = [response mutableCopy];
-        flattenResponse[kAdResonsesMetadataKey] = [response[kAdResonsesMetadataKey] mutableCopy];
-
         for (NSString *key in keys) {
+            flattenResponse[kAdResonsesMetadataKey] = [response[kAdResonsesMetadataKey] mutableCopy];
             flattenResponse[kAdResonsesMetadataKey][key] = json[key];
         }
         [flattenResponses addObject:flattenResponse];
     }
     return flattenResponses;
-}
-
-// Process any top level json attributes that trigger state changes within the SDK.
-/**
- Handles all server-side overrides, and strips them out of the response JSON
- so that they are not propagated to the rest of the responses.
- @param serverResponseJson Top-level JSON response from the server
- @return Top-level JSON response stripped of all override fields
- */
-- (NSDictionary *)handleAdResponseOverrides:(NSDictionary *)serverResponseJson {
-    // Handle Consent
-    NSMutableDictionary * json = [[self handleConsentOverrides:serverResponseJson] mutableCopy];
-
-    // Handle the enabling of debug logging.
-    NSNumber * debugLoggingEnabled = json[kEnableDebugLogging];
-    if (debugLoggingEnabled != nil && [debugLoggingEnabled boolValue]) {
-        MPLogInfo(@"Debug logging enabled");
-        MPLogging.consoleLogLevel = MPBLogLevelDebug;
-
-        json[kEnableDebugLogging] = nil;
-    }
-
-    return json;
 }
 
 #pragma mark - Internal

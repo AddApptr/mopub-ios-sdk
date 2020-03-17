@@ -1,7 +1,7 @@
 //
 //  NSString+MPAdditions.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -11,9 +11,12 @@
 @implementation NSString (MPAdditions)
 
 - (NSString *)mp_URLEncodedString {
-    NSString *charactersToEscape = @"!*'();:@&=+$,/?%#[]<>";
-    NSCharacterSet *allowedCharacters = [[NSCharacterSet characterSetWithCharactersInString:charactersToEscape] invertedSet];
-    return [self stringByAddingPercentEncodingWithAllowedCharacters:allowedCharacters];
+    NSString *result = (NSString *)CFBridgingRelease(CFURLCreateStringByAddingPercentEscapes(NULL,
+                                                                                             (CFStringRef)self,
+                                                                                             NULL,
+                                                                                             (CFStringRef)@"!*'();:@&=+$,/?%#[]<>",
+                                                                                             kCFStringEncodingUTF8));
+    return result;
 }
 
 - (NSNumber *)safeIntegerValue {

@@ -1,7 +1,7 @@
 //
 //  MPMemoryCache.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -47,7 +47,7 @@
         return nil;
     }
 
-    MPLogDebug(@"%@ retrieved data for key %@", NSStringFromClass(self.class), key);
+    MPLogTrace(@"%@ retrieved data for key %@", NSStringFromClass(self.class), key);
     return [self.memcache objectForKey:key];
 }
 
@@ -58,12 +58,12 @@
 
     // Set cache entry
     if (data != nil) {
-        MPLogDebug(@"%@ set data %@ for key %@", NSStringFromClass(self.class), data, key);
+        MPLogTrace(@"%@ set data %@ for key %@", NSStringFromClass(self.class), data, key);
         [self.memcache setObject:data forKey:key];
     }
     // Remove cache entry
     else {
-        MPLogDebug(@"%@ removed cache entry %@", NSStringFromClass(self.class), key);
+        MPLogTrace(@"%@ removed cache entry %@", NSStringFromClass(self.class), key);
         [self.memcache removeObjectForKey:key];
     }
 }
@@ -71,7 +71,7 @@
 #pragma mark - NSCacheDelegate
 
 - (void)cache:(NSCache *)cache willEvictObject:(id)obj {
-    MPLogDebug(@"%@ evicted %@", NSStringFromClass(self.class), obj);
+    MPLogTrace(@"%@ evicted %@", NSStringFromClass(self.class), obj);
 }
 
 @end
@@ -81,7 +81,7 @@
 - (UIImage * _Nullable)imageForKey:(NSString * _Nonnull)key {
     NSData * imageData = [self dataForKey:key];
     if (imageData == nil) {
-        MPLogDebug(@"%@ found no image data for key %@", NSStringFromClass(self.class), key);
+        MPLogTrace(@"%@ found no image data for key %@", NSStringFromClass(self.class), key);
         return  nil;
     }
 

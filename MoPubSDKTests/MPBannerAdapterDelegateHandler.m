@@ -1,7 +1,7 @@
 //
 //  MPBannerAdapterDelegateHandler.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -30,16 +30,8 @@
     if (self.willLeaveApplication != nil) { self.willLeaveApplication(); }
 }
 
-- (void)adapterDidTrackImpressionForAd:(MPBaseBannerAdapter *)adapter {
+- (void)adapter:(MPBaseBannerAdapter *)adapter didTrackImpressionForAd:(UIView *)ad {
     if (self.didTrackImpression != nil) { self.didTrackImpression(); }
-}
-
-- (void)adWillExpandForAdapter:(MPBaseBannerAdapter *)adapter {
-    if (self.willExpand != nil) { self.willExpand(); }
-}
-
-- (void)adDidCollapseForAdapter:(MPBaseBannerAdapter *)adapter {
-    if (self.didCollapse != nil) { self.didCollapse(); }
 }
 
 @end

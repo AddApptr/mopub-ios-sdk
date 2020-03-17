@@ -1,19 +1,16 @@
 //
 //  MPInterstitialAdController.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPInterstitialAdController.h"
-#import "MoPub+Utility.h"
 #import "MPAdTargeting.h"
-#import "MPGlobal.h"
-#import "MPImpressionTrackedNotification.h"
+#import "MPLogging.h"
 #import "MPInterstitialAdManager.h"
 #import "MPInterstitialAdManagerDelegate.h"
-#import "MPLogging.h"
 
 @interface MPInterstitialAdController () <MPInterstitialAdManagerDelegate>
 
@@ -67,7 +64,7 @@
 
 - (void)loadAd
 {
-    MPAdTargeting * targeting = [MPAdTargeting targetingWithCreativeSafeSize:MPApplicationFrame(YES).size];
+    MPAdTargeting * targeting = [[MPAdTargeting alloc] init];
     targeting.keywords = self.keywords;
     targeting.localExtras = self.localExtras;
     targeting.location = self.location;
@@ -79,13 +76,13 @@
 - (void)showFromViewController:(UIViewController *)controller
 {
     if (!controller) {
-        MPLogInfo(@"The interstitial could not be shown: "
+        MPLogWarn(@"The interstitial could not be shown: "
                   @"a nil view controller was passed to -showFromViewController:.");
         return;
     }
 
     if (![controller.view.window isKeyWindow]) {
-        MPLogInfo(@"Attempted to present an interstitial ad in non-key window. The ad may not render properly");
+        MPLogWarn(@"Attempted to present an interstitial ad in non-key window. The ad may not render properly");
     }
 
     [self.manager presentInterstitialFromViewController:controller];
@@ -175,12 +172,6 @@
     if ([self.delegate respondsToSelector:@selector(interstitialDidReceiveTapEvent:)]) {
         [self.delegate interstitialDidReceiveTapEvent:self];
     }
-}
-
-- (void)interstitialAdManager:(MPInterstitialAdManager *)manager didReceiveImpressionEventWithImpressionData:(MPImpressionData *)impressionData {
-    [MoPub sendImpressionDelegateAndNotificationFromAd:self
-                                              adUnitID:self.adUnitId
-                                        impressionData:impressionData];
 }
 
 + (NSMutableArray *)sharedInterstitialAdControllers

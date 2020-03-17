@@ -1,7 +1,7 @@
 //
 //  MPAdConfigurationFactory.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -20,7 +20,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
 + (MPAdConfiguration *)clearResponse
 {
     NSDictionary * metadata = @{ kAdTypeMetadataKey: kAdTypeClear };
-    return [[MPAdConfiguration alloc] initWithMetadata:metadata data:nil isFullscreenAd:YES];
+    return [[MPAdConfiguration alloc] initWithMetadata:metadata data:nil];
 }
 
 #pragma mark - Native
@@ -87,11 +87,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
         [allProperties addEntriesFromDictionary:properties];
     }
 
-    return [[MPAdConfiguration alloc] initWithMetadata:headers
-                                                  data:[NSJSONSerialization dataWithJSONObject:allProperties
-                                                                                       options:NSJSONWritingPrettyPrinted
-                                                                                         error:nil]
-                                        isFullscreenAd:NO];
+    return [[MPAdConfiguration alloc] initWithMetadata:headers data:[NSJSONSerialization dataWithJSONObject:allProperties options:NSJSONWritingPrettyPrinted error:nil]];
 }
 
 #pragma mark - Banners
@@ -145,8 +141,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
     HTMLString = HTMLString ? HTMLString : @"Publisher's Ad";
 
     return [[MPAdConfiguration alloc] initWithMetadata:headers
-                                                  data:[HTMLString dataUsingEncoding:NSUTF8StringEncoding]
-                                        isFullscreenAd:NO];
+                                                 data:[HTMLString dataUsingEncoding:NSUTF8StringEncoding]];
 }
 
 #pragma mark - Interstitials
@@ -158,7 +153,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
               kClickthroughMetadataKey: @"http://ads.mopub.com/m/clickThroughTracker?a=1",
               kNextUrlMetadataKey: @"http://ads.mopub.com/m/failURL",
               kImpressionTrackerMetadataKey: @"http://ads.mopub.com/m/impressionTracker",
-              kFullAdTypeMetadataKey: kAdTypeHtml,
+              kInterstitialAdTypeMetadataKey: kAdTypeHtml,
               kOrientationTypeMetadataKey: @"p"
               } mutableCopy];
 }
@@ -200,7 +195,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
 
 + (MPAdConfiguration *)defaultInterstitialConfigurationWithNetworkType:(NSString *)type
 {
-    return [self defaultInterstitialConfigurationWithHeaders:@{kFullAdTypeMetadataKey: type}
+    return [self defaultInterstitialConfigurationWithHeaders:@{kInterstitialAdTypeMetadataKey: type}
                                                   HTMLString:nil];
 }
 
@@ -229,8 +224,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
     HTMLString = HTMLString ? HTMLString : @"Publisher's Interstitial";
 
     return [[MPAdConfiguration alloc] initWithMetadata:headers
-                                                  data:[HTMLString dataUsingEncoding:NSUTF8StringEncoding]
-                                        isFullscreenAd:NO];
+                                                 data:[HTMLString dataUsingEncoding:NSUTF8StringEncoding]];
 }
 
 #pragma mark - Rewarded Video
@@ -241,7 +235,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
               kClickthroughMetadataKey: @"http://ads.mopub.com/m/clickThroughTracker?a=1",
               kNextUrlMetadataKey: @"http://ads.mopub.com/m/failURL",
               kImpressionTrackerMetadataKey: @"http://ads.mopub.com/m/impressionTracker",
-              kFullAdTypeMetadataKey: kAdTypeHtml,
+              kInterstitialAdTypeMetadataKey: kAdTypeHtml,
               } mutableCopy];
 }
 
@@ -269,7 +263,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
 
 + (MPAdConfiguration *)defaultRewardedVideoConfiguration
 {
-    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultRewardedVideoHeaders] data:nil isFullscreenAd:YES];
+    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultRewardedVideoHeaders] data:nil];
     return adConfiguration;
 }
 
@@ -286,25 +280,25 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
         [metadata addEntriesFromDictionary:additionalMetadata];
     }
 
-    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:metadata data:nil isFullscreenAd:YES];
+    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:metadata data:nil];
     return adConfiguration;
 }
 
 + (MPAdConfiguration *)defaultRewardedVideoConfigurationWithReward
 {
-    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultRewardedVideoHeadersWithReward] data:nil isFullscreenAd:YES];
+    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultRewardedVideoHeadersWithReward] data:nil];
     return adConfiguration;
 }
 
 + (MPAdConfiguration *)defaultRewardedVideoConfigurationServerToServer
 {
-    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultRewardedVideoHeadersServerToServer] data:nil isFullscreenAd:YES];
+    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultRewardedVideoHeadersServerToServer] data:nil];
     return adConfiguration;
 }
 
 + (MPAdConfiguration *)defaultNativeVideoConfigurationWithVideoTrackers
 {
-    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultNativeVideoHeadersWithTrackers] data:nil isFullscreenAd:YES];
+    MPAdConfiguration *adConfiguration = [[MPAdConfiguration alloc] initWithMetadata:[self defaultNativeVideoHeadersWithTrackers] data:nil];
     return adConfiguration;
 }
 

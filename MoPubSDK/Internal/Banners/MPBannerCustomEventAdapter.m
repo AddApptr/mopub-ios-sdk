@@ -1,7 +1,7 @@
 //
 //  MPBannerCustomEventAdapter.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -12,7 +12,6 @@
 #import "MPAdTargeting.h"
 #import "MPBannerCustomEvent.h"
 #import "MPCoreInstanceProvider.h"
-#import "MPError.h"
 #import "MPLogging.h"
 #import "MPAdImpressionTimer.h"
 #import "MPBannerCustomEvent+Internal.h"
@@ -64,9 +63,8 @@
 
     MPBannerCustomEvent *customEvent = [[configuration.customEventClass alloc] init];
     if (![customEvent isKindOfClass:[MPBannerCustomEvent class]]) {
-        NSError * error = [NSError customEventClass:configuration.customEventClass doesNotInheritFrom:MPBannerCustomEvent.class];
-        MPLogEvent([MPLogEvent error:error message:nil]);
-        [self.delegate adapter:self didFailToLoadAdWithError:error];
+        MPLogError(@"**** Custom Event Class: %@ does not extend MPBannerCustomEvent ****", NSStringFromClass(configuration.customEventClass));
+        [self.delegate adapter:self didFailToLoadAdWithError:nil];
         return;
     }
 
@@ -74,7 +72,6 @@
     self.bannerCustomEvent = customEvent;
     self.bannerCustomEvent.delegate = self;
     self.bannerCustomEvent.localExtras = targeting.localExtras;
-
     [self.bannerCustomEvent requestAdWithSize:size customEventInfo:configuration.customEventClassData adMarkup:configuration.advancedBidPayload];
 }
 
@@ -189,23 +186,6 @@
     }
 }
 
-- (void)bannerCustomEventWillExpandAd:(MPBannerCustomEvent *)event
-{
-    [self.delegate adWillExpandForAdapter:self];
-}
-
-- (void)bannerCustomEventDidCollapseAd:(MPBannerCustomEvent *)event
-{
-    [self.delegate adDidCollapseForAdapter:self];
-}
-
-- (void)trackImpression {
-    [super trackImpression];
-
-    // Notify delegate that an impression tracker was fired
-    [self.delegate adapterDidTrackImpressionForAd:self];
-}
-
 #pragma mark - MPAdImpressionTimerDelegate
 
 - (void)adViewWillLogImpression:(UIView *)adView
@@ -216,6 +196,9 @@
     [self.bannerCustomEvent trackImpressionsIncludedInMarkup];
     // Start viewability tracking
     [self.bannerCustomEvent startViewabilityTracker];
+
+    // Notify delegate that an impression tracker was fired
+    [self.delegate adapter:self didTrackImpressionForAd:adView];
 }
 
 @end

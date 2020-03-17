@@ -1,7 +1,7 @@
 //
 //  MPViewabilityAdapterMoat.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -34,63 +34,7 @@ static NSString *const kMOATSendAdStoppedJavascript = @"MoTracker.sendMoatAdStop
 
 @implementation MPViewabilityAdapterMoat
 
-#pragma mark - MPViewabilityAdapter
-
-- (void)startTracking {
-#ifdef __HAS_MOAT_FRAMEWORK_
-    // Only start tracking if:
-    // 1. Moat is not already tracking
-    // 2. Moat is allocated
-    if (!self.isTracking && self.moatWebTracker != nil) {
-        [self.moatWebTracker startTracking];
-        self.isTracking = YES;
-        MPLogInfo(@"MOAT tracking started");
-    }
-#endif
-}
-
-- (void)stopTracking {
-#ifdef __HAS_MOAT_FRAMEWORK_
-    // Only stop tracking if:
-    // 1. Moat is currently tracking
-    if (self.isTracking) {
-        void (^moatEndTrackingBlock)(void) = ^{
-            [self.moatWebTracker stopTracking];
-            if (self.moatWebTracker) {
-                MPLogInfo(@"MOAT tracking stopped");
-            }
-        };
-        // If video, as a safeguard, dispatch `AdStopped` event before we stop tracking.
-        // (MoTracker makes sure AdStopped is only dispatched once no matter how many times
-        // this function is called)
-        if (self.isVideo) {
-            if ([self.webView isKindOfClass:[WKWebView class]]) {
-                WKWebView *typedWebView = (WKWebView *)self.webView;
-                [typedWebView evaluateJavaScript:kMOATSendAdStoppedJavascript
-                               completionHandler:^(id result, NSError *error){
-                                   moatEndTrackingBlock();
-                               }];
-            } else {
-                MPLogInfo(@"Unexpected web view class: %@", self.webView.class);
-                moatEndTrackingBlock();
-            }
-        } else {
-            moatEndTrackingBlock();
-        }
-
-        // Mark Moat as not tracking
-        self.isTracking = NO;
-    }
-#endif
-}
-
-- (void)registerFriendlyObstructionView:(UIView *)view {
-    // Nothing to do
-}
-
-#pragma mark - MPViewabilityAdapterForWebView
-
-- (instancetype)initWithWebView:(UIView *)webView isVideo:(BOOL)isVideo startTrackingImmediately:(BOOL)startTracking {
+- (instancetype)initWithAdView:(UIView *)webView isVideo:(BOOL)isVideo startTrackingImmediately:(BOOL)startTracking {
     if (self = [super init]) {
         _isTracking = NO;
 
@@ -118,12 +62,65 @@ static NSString *const kMOATSendAdStoppedJavascript = @"MoTracker.sendMoatAdStop
         if (startTracking) {
             [_moatWebTracker startTracking];
             _isTracking = YES;
-            MPLogInfo(@"MOAT tracking started");
+            MPLogInfo(@"[Viewability] MOAT tracking started");
         }
 #endif
     }
 
     return self;
+}
+
+- (void)startTracking {
+#ifdef __HAS_MOAT_FRAMEWORK_
+    // Only start tracking if:
+    // 1. Moat is not already tracking
+    // 2. Moat is allocated
+    if (!self.isTracking && self.moatWebTracker != nil) {
+        [self.moatWebTracker startTracking];
+        self.isTracking = YES;
+        MPLogInfo(@"[Viewability] MOAT tracking started");
+    }
+#endif
+}
+
+- (void)stopTracking {
+#ifdef __HAS_MOAT_FRAMEWORK_
+    // Only stop tracking if:
+    // 1. Moat is currently tracking
+    if (self.isTracking) {
+        void (^moatEndTrackingBlock)(void) = ^{
+            [self.moatWebTracker stopTracking];
+            if (self.moatWebTracker) {
+                MPLogInfo(@"[Viewability] MOAT tracking stopped");
+            }
+        };
+        // If video, as a safeguard, dispatch `AdStopped` event before we stop tracking.
+        // (MoTracker makes sure AdStopped is only dispatched once no matter how many times
+        // this function is called)
+        if (self.isVideo) {
+            if ([self.webView isKindOfClass:[WKWebView class]]) {
+                WKWebView *typedWebView = (WKWebView *)self.webView;
+                [typedWebView evaluateJavaScript:kMOATSendAdStoppedJavascript
+                               completionHandler:^(id result, NSError *error){
+                                   moatEndTrackingBlock();
+                               }];
+            } else if ([self.webView isKindOfClass:[UIWebView class]]) {
+                UIWebView *typedWebView = (UIWebView *)self.webView;
+                [typedWebView stringByEvaluatingJavaScriptFromString:kMOATSendAdStoppedJavascript];
+                moatEndTrackingBlock();
+            }
+        } else {
+            moatEndTrackingBlock();
+        }
+
+        // Mark Moat as not tracking
+        self.isTracking = NO;
+    }
+#endif
+}
+
+- (void)registerFriendlyObstructionView:(UIView *)view {
+    // Nothing to do
 }
 
 @end

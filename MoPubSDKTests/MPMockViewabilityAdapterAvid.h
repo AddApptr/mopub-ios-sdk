@@ -1,7 +1,7 @@
 //
 //  MPMockViewabilityAdapterAvid.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -13,10 +13,12 @@
  * This mock is named `MPViewabilityAdapterAvid` instead of `MPMockViewabilityAdapterAvid`
  * because `MPViewabilityTracker` is looking for that class name.
  */
-@interface MPViewabilityAdapterAvid : NSObject <
-    MPViewabilityAdapter,
-    MPViewabilityAdapterForWebView,
-    MPViewabilityAdapterForNativeVideoView
->
+@interface MPViewabilityAdapterAvid : NSObject <MPViewabilityAdapter>
+@property (nonatomic, readonly) BOOL isTracking;
+
+- (instancetype)initWithAdView:(UIView *)webView isVideo:(BOOL)isVideo startTrackingImmediately:(BOOL)startTracking;
+- (void)startTracking;
+- (void)stopTracking;
+- (void)registerFriendlyObstructionView:(UIView *)view;
 
 @end

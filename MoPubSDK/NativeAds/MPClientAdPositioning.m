@@ -1,7 +1,7 @@
 //
 //  MPClientAdPositioning.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -26,7 +26,7 @@
     if (interval > 1) {
         self.repeatingInterval = interval;
     } else {
-        MPLogInfo(@"Repeating positions will not be enabled: the provided interval must be greater "
+        MPLogWarn(@"Repeating positions will not be enabled: the provided interval must be greater "
                   @"than 1.");
     }
 }

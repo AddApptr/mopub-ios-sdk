@@ -1,7 +1,7 @@
 //
 //  AdUnitTableViewCell.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -11,7 +11,7 @@ import UIKit
 /**
  Cell for displaying ad unit information.
  */
-final class AdUnitTableViewCell: UITableViewCell, TableViewCellRegisterable {
+class AdUnitTableViewCell: UITableViewCell {
     // Outlets from `AdUnitTableViewCell.xib`
     @IBOutlet weak var name: UILabel!
     @IBOutlet weak var adUnitId: UILabel!
@@ -24,4 +24,9 @@ final class AdUnitTableViewCell: UITableViewCell, TableViewCellRegisterable {
         name.text = adUnit.name
         adUnitId.text = adUnit.id
     }
+}
+
+extension AdUnitTableViewCell: TableViewCellRegisterable {
+    // MARK: - TableViewCellRegisterable
+    static private(set) var reuseId: String = "AdUnitTableViewCell"
 }

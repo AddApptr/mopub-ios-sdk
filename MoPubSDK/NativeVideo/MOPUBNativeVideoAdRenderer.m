@@ -1,20 +1,18 @@
 //
 //  MOPUBNativeVideoAdRenderer.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MOPUBNativeVideoAdRenderer.h"
-#import "MPBaseNativeAdRenderer+Internal.h"
 #import "MPNativeAdRendererConfiguration.h"
 #import "MPNativeAdRenderer.h"
 #import "MPNativeAdRendering.h"
 #import "MPNativeAdAdapter.h"
 #import "MPNativeAdConstants.h"
 #import "MPNativeAdError.h"
-#import "MPNativeAdError+VAST.h"
 #import "MPNativeAdRendererImageHandler.h"
 #import "MPTimer.h"
 #import "MPGlobal.h"
@@ -26,6 +24,7 @@
 #import "MPVASTTracking.h"
 #import "MPVideoConfig.h"
 #import "MOPUBNativeVideoAdConfigValues.h"
+#import "MOPUBNativeVideoImpressionAgent.h"
 #import "MOPUBPlayerViewController.h"
 #import "MPNativeAdRenderingImageLoader.h"
 #import "MPURLRequest.h"
@@ -36,8 +35,10 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
 
 @interface MOPUBNativeVideoAdRenderer () <MPNativeAdRenderer, MOPUBPlayerViewControllerDelegate, MOPUBFullscreenPlayerViewControllerDelegate, MPNativeAdRendererImageHandlerDelegate>
 
+@property (nonatomic) UIView<MPNativeAdRendering> *adView;
 @property (nonatomic) MOPUBNativeVideoAdAdapter<MPNativeAdAdapter> *adapter;
 @property (nonatomic) BOOL adViewInViewHierarchy;
+@property (nonatomic) Class renderingViewClass;
 @property (nonatomic) MPNativeAdRendererImageHandler *rendererImageHandler;
 
 @property (nonatomic, weak) MOPUBPlayerViewController *videoController;
@@ -45,6 +46,7 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
 @property (nonatomic) MPVideoConfig *videoConfig;
 @property (nonatomic) MPVASTTracking *vastTracking;
 @property (nonatomic) MOPUBNativeVideoAdConfigValues *nativeVideoAdConfig;
+@property (nonatomic) MOPUBNativeVideoImpressionAgent *trackingAgent;
 @property (nonatomic) BOOL trackingImpressionFired;
 
 @end
@@ -65,17 +67,13 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
 {
     if (self = [super init]) {
         MOPUBNativeVideoAdRendererSettings *settings = (MOPUBNativeVideoAdRendererSettings *)rendererSettings;
-        self.renderingViewClass = settings.renderingViewClass;
+        _renderingViewClass = settings.renderingViewClass;
         _viewSizeHandler = [settings.viewSizeHandler copy];
         _rendererImageHandler = [MPNativeAdRendererImageHandler new];
         _rendererImageHandler.delegate = self;
     }
 
     return self;
-}
-
-- (MPVASTTracking *)vastTracking {
-    return self.videoController.vastTracking;
 }
 
 - (void)dealloc
@@ -92,7 +90,6 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
     if (!adapter) {
         if (error) {
             *error = MPNativeAdNSErrorForRenderValueTypeError();
-            [self.vastTracking handleVASTError:VASTErrorCodeFromNativeAdErrorCode((*error).code) videoTimeOffset:0];
         }
 
         return nil;
@@ -119,8 +116,6 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
     if ([self.adView respondsToSelector:@selector(nativeCallToActionTextLabel)] && self.adView.nativeCallToActionTextLabel) {
         self.adView.nativeCallToActionTextLabel.text = [adapter.properties objectForKey:kAdCTATextKey];
     }
-
-    [self renderSponsoredByTextWithAdapter:adapter];
 
     if ([self.adView respondsToSelector:@selector(nativePrivacyInformationIconImageView)]) {
         UIImage *privacyIconImage = [adapter.properties objectForKey:kAdPrivacyIconUIImageKey];
@@ -159,7 +154,6 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
                 [imageView addGestureRecognizer:tapRecognizer];
             } errorHandler:^(NSError * _Nonnull error) {
                 MPLogInfo(@"Failed to retrieve privacy icon from %@", privacyIconImageUrl);
-                [self.vastTracking handleVASTError:MPVASTErrorUndefined videoTimeOffset:0];
             }];
         }
         // The ad network may provide its own view for its privacy information icon.
@@ -299,26 +293,24 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
     [self.adapter handleVideoHasProgressedToTime:playbackTime];
 
     // Only the first impression is tracked.
-    if (!self.trackingImpressionFired) {
+    if (!self.trackingImpressionFired && [self.trackingAgent shouldTrackImpressionWithCurrentPlaybackTime:playbackTime]) {
         self.trackingImpressionFired = YES;
 
         // Fire MoPub impression tracking
         [self.adapter handleVideoViewImpression];
         // Fire VAST Impression Tracking
-        [self.vastTracking handleVideoEvent:MPVideoEventImpression
+        [self.vastTracking handleVideoEvent:MPVideoEventTypeImpression
                             videoTimeOffset:playbackTime];
     }
-
-    NSTimeInterval videoDuration = CMTimeGetSeconds(self.videoController.playerItem.duration);
-    [self.vastTracking handleVideoProgressEvent:playbackTime videoDuration:videoDuration];
+    [self.vastTracking handleVideoEvent:MPVideoEventTypeTimeUpdate videoTimeOffset:playbackTime];
 }
 
 - (void)ctaTapped:(MOPUBFullscreenPlayerViewController *)viewController
 {
     // MoPub video CTA button clicked. Only the first click is tracked. The check is handled in MPNativeAd.
     [self.adapter handleVideoViewClick];
-    [self.vastTracking handleVideoEvent:MPVideoEventClick
-                        videoTimeOffset:self.videoController.avPlayer.currentPlaybackTime];
+    [self.vastTracking handleVideoEvent:MPVideoEventTypeClick
+                                        videoTimeOffset:self.videoController.avPlayer.currentPlaybackTime];
 }
 
 - (void)fullscreenPlayerWillLeaveApplication:(MOPUBFullscreenPlayerViewController *)viewController
@@ -331,7 +323,7 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
 // being called from MPNativeAd
 - (void)nativeAdTapped
 {
-    [self.vastTracking handleVideoEvent:MPVideoEventClick
+    [self.vastTracking handleVideoEvent:MPVideoEventTypeClick
                         videoTimeOffset:self.videoController.avPlayer.currentPlaybackTime];
 }
 
@@ -392,14 +384,24 @@ static const CGFloat kAutoPlayTimerInterval = 0.25f;
             [self.adView bringSubviewToFront:self.adView.nativeVideoView];
 
             if (!self.autoPlayTimer) {
-                self.autoPlayTimer = [MPTimer timerWithTimeInterval:kAutoPlayTimerInterval
-                                                             target:self
-                                                           selector:@selector(tick:)
-                                                            repeats:YES
-                                                        runLoopMode:NSRunLoopCommonModes];
+                self.autoPlayTimer = [MPTimer timerWithTimeInterval:kAutoPlayTimerInterval target:self selector:@selector(tick:) repeats:YES];
+                self.autoPlayTimer.runLoopMode = NSRunLoopCommonModes;
                 [self.autoPlayTimer scheduleNow];
             }
+
+            self.trackingAgent = [[MOPUBNativeVideoImpressionAgent alloc] initWithVideoView:self.videoController.playerView
+                                                               requiredVisibilityPercentage:self.nativeVideoAdConfig.impressionMinVisiblePercent/100.0f
+                                                                   requiredPlaybackDuration:self.nativeVideoAdConfig.impressionMinVisibleSeconds];
         }
+        // Lazy load vast tracking. It must be created after we know the video controller has been initialized.
+        // If we created a new video controller, we must ensure the vast tracking has the new view.
+        if (!self.vastTracking) {
+            self.vastTracking = [[MPVASTTracking alloc] initWithMPVideoConfig:self.videoConfig videoView:self.videoController.playerView];
+        } else if (createdNewVideoController) {
+            [self.vastTracking handleNewVideoView:self.videoController.playerView];
+        }
+        // Always set the videoControllers vast tracking object to be the current renderer's
+        self.videoController.vastTracking = self.vastTracking;
     }
 }
 

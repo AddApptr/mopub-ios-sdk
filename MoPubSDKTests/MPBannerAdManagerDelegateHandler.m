@@ -1,18 +1,14 @@
 //
 //  MPBannerAdManagerDelegateHandler.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPBannerAdManagerDelegateHandler.h"
 
-// Warning: Class 'MPBannerAdManagerDelegateHandler' does not conform to protocol 'MPBannerAdManagerDelegate'
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wprotocol"
 @implementation MPBannerAdManagerDelegateHandler
-#pragma clang diagnostic pop
 
 #pragma mark - MPBannerAdManagerDelegate
 
@@ -24,8 +20,8 @@
     if (self.didLoadAd != nil) { self.didLoadAd(); }
 }
 
-- (void)managerDidFailToLoadAdWithError:(NSError *)error {
-    if (self.didFailToLoadAd != nil) { self.didFailToLoadAd(error); }
+- (void)managerDidFailToLoadAd {
+    if (self.didFailToLoadAd != nil) { self.didFailToLoadAd(); }
 }
 
 - (void)userActionWillBegin {
@@ -38,10 +34,6 @@
 
 - (void)userWillLeaveApplication {
     if (self.willLeaveApplication != nil) { self.willLeaveApplication(); }
-}
-
-- (void)impressionDidFireWithImpressionData:(MPImpressionData *)impressionData {
-    if (self.impressionDidFire != nil) { self.impressionDidFire(impressionData); }
 }
 
 @end

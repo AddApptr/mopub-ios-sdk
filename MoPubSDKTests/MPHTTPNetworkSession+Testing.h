@@ -1,15 +1,13 @@
 //
 //  MPHTTPNetworkSession+Testing.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPHTTPNetworkSession.h"
 #import "MPHTTPNetworkTaskData.h"
-
-NS_ASSUME_NONNULL_BEGIN
 
 @interface MPHTTPNetworkSession (Testing)
 
@@ -22,5 +20,3 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(nullable NSError *)error;
 
 @end
-
-NS_ASSUME_NONNULL_END

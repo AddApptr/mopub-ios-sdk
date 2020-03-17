@@ -1,7 +1,7 @@
 //
 //  RewardedAdDataSource.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -25,36 +25,44 @@ class RewardedAdDataSource: NSObject, AdDataSource {
     private var selectedReward: MPRewardedVideoReward? = nil
     
     /**
+     Rewarded that was granted to the user.
+     */
+    private var grantedReward: MPRewardedVideoReward? = nil
+    
+    /**
      Table of which events were triggered.
      */
-    var eventTriggered: [AdEvent: Bool] = [:]
+    private var eventTriggered: [AdEvent: Bool] = [:]
+    
+    /**
+     Reason for load failure.
+     */
+    private var loadFailureReason: String? = nil
+    
+    /**
+     Reason for playback failure.
+     */
+    private var playFailureReason: String? = nil
     
     /**
      Status event titles that correspond to the events found in `MPRewardedVideoDelegate`
      */
-    lazy var title: [AdEvent: String] = {
+    private lazy var title: [AdEvent: String] = {
         var titleStrings: [AdEvent: String] = [:]
-        titleStrings[.didLoad]          = CallbackFunctionNames.rewardedVideoAdDidLoad
-        titleStrings[.didFailToLoad]    = CallbackFunctionNames.rewardedVideoAdDidFailToLoad
-        titleStrings[.didFailToPlay]    = CallbackFunctionNames.rewardedVideoAdDidFailToPlay
-        titleStrings[.willAppear]       = CallbackFunctionNames.rewardedVideoAdWillAppear
-        titleStrings[.didAppear]        = CallbackFunctionNames.rewardedVideoAdDidAppear
-        titleStrings[.willDisappear]    = CallbackFunctionNames.rewardedVideoAdWillDisappear
-        titleStrings[.didDisappear]     = CallbackFunctionNames.rewardedVideoAdDidDisappear
-        titleStrings[.didExpire]        = CallbackFunctionNames.rewardedVideoAdDidExpire
-        titleStrings[.clicked]          = CallbackFunctionNames.rewardedVideoAdDidReceiveTapEvent
-        titleStrings[.willLeaveApp]     = CallbackFunctionNames.rewardedVideoAdWillLeaveApplication
-        titleStrings[.shouldRewardUser] = CallbackFunctionNames.rewardedVideoAdShouldReward
-        titleStrings[.didTrackImpression] = CallbackFunctionNames.didTrackImpression
+        titleStrings[.didLoad]          = "rewardedVideoAdDidLoad(_:)"
+        titleStrings[.didFailToLoad]    = "rewardedVideoAdDidFailToLoad(_:_:)"
+        titleStrings[.didFailToPlay]    = "rewardedVideoAdDidFailToPlay(_:_:)"
+        titleStrings[.willAppear]       = "rewardedVideoAdWillAppear(_:)"
+        titleStrings[.didAppear]        = "rewardedVideoAdDidAppear(_:)"
+        titleStrings[.willDisappear]    = "rewardedVideoAdWillDisappear(_:)"
+        titleStrings[.didDisappear]     = "rewardedVideoAdDidDisappear(_:)"
+        titleStrings[.didExpire]        = "rewardedVideoAdDidExpire(_:)"
+        titleStrings[.clicked]          = "rewardedVideoAdDidReceiveTapEvent(_:)"
+        titleStrings[.willLeaveApp]     = "rewardedVideoAdWillLeaveApplication(_:)"
+        titleStrings[.shouldRewardUser] = "rewardedVideoAdShouldReward(_:_:)"
         
         return titleStrings
     }()
-    
-    /**
-     Optional status messages that correspond to the events found in the ad's delegate protocol.
-     These are reset as part of `clearStatus`.
-     */
-    var messages: [AdEvent: String] = [:]
     
     // MARK: - Initialization
     
@@ -84,6 +92,13 @@ class RewardedAdDataSource: NSObject, AdDataSource {
     }()
     
     /**
+     The actions available for the ad.
+     */
+    lazy var actions: [AdAction] = {
+        return [.load, .show]
+    }()
+    
+    /**
      Closures associated with each available ad action.
      */
     lazy var actionHandlers: [AdAction: AdActionHandler] = {
@@ -103,7 +118,7 @@ class RewardedAdDataSource: NSObject, AdDataSource {
      The status events available for the ad.
      */
     lazy var events: [AdEvent] = {
-        return [.didLoad, .didFailToLoad, .didFailToPlay, .willAppear, .didAppear, .willDisappear, .didDisappear, .didExpire, .clicked, .willLeaveApp, .shouldRewardUser, .didTrackImpression]
+        return [.didLoad, .didFailToLoad, .didFailToPlay, .willAppear, .didAppear, .willDisappear, .didDisappear, .didExpire, .clicked, .willLeaveApp, .shouldRewardUser]
     }()
     
     /**
@@ -119,21 +134,47 @@ class RewardedAdDataSource: NSObject, AdDataSource {
     }
     
     /**
-     Queries if the data source has an ad loaded.
+     Retrieves the display status for the event.
+     - Parameter event: Status event.
+     - Returns: A tuple containing the status display title, optional message, and highlighted state.
      */
-    var isAdLoaded: Bool {
-        return MPRewardedVideo.hasAdAvailable(forAdUnitID: adUnit.id)
+    func status(for event: AdEvent) -> (title: String, message: String?, isHighlighted: Bool) {
+        var message: String? = nil
+        if event == .didFailToLoad {
+            message = loadFailureReason
+        }
+        else if event == .didFailToPlay {
+            message = playFailureReason
+        }
+        else if event == .shouldRewardUser, let amount = grantedReward?.amount, let currency = grantedReward?.currencyType {
+            message = "\(amount) \(currency)"
+        }
+        
+        let isHighlighted = (eventTriggered[event] ?? false)
+        return (title: title[event] ?? "", message: message, isHighlighted: isHighlighted)
     }
     
     /**
-     Queries if the data source currently requesting an ad.
+     Sets the status for the event to highlighted. If the status is already highlighted,
+     nothing is done.
+     - Parameter event: Status event.
+     - Parameter complete: Completion closure.
      */
-    private(set) var isAdLoading: Bool = false
+    func setStatus(for event: AdEvent, complete:(() -> Swift.Void)) {
+        eventTriggered[event] = true
+        complete()
+    }
     
     /**
-    Optional ad size used for requesting inline ads. This should be `nil` for non-inline ads.
-    */
-    var requestedAdSize: CGSize? = nil
+     Clears the highlighted state for all status events.
+     - Parameter complete: Completion closure.
+     */
+    func clearStatus(complete:(() -> Swift.Void)) {
+        loadFailureReason = nil
+        playFailureReason = nil
+        eventTriggered = [:]
+        complete()
+    }
     
     // MARK: - Reward Selection
     
@@ -149,13 +190,50 @@ class RewardedAdDataSource: NSObject, AdDataSource {
             return
         }
         
+        // It's really a supported behavior to have a `UIPickerView` as a subview
+        // of `UIAlertController`. To make it work, the width of the alert view
+        // (as specified by `preferredContentSize`) should be the same as the
+        // picker view.
+        
         // Create the alert.
-        let alert = UIAlertController(title: "Choose Reward", message: nil, pickerViewDelegate: self, pickerViewDataSource: self, sender: sender)
+        let alert: UIAlertController = UIAlertController(title: "Choose Reward", message: nil, preferredStyle: .actionSheet)
+        alert.isModalInPopover = true
+        alert.preferredContentSize = CGSize(width: 320, height: 250)
         
         // Create the selection button.
         alert.addAction(UIAlertAction(title: "Select", style: .default, handler: { _ in
             complete()
         }))
+        
+        // Reward picker view
+        let pickerView: UIPickerView = UIPickerView(frame: CGRect(x: 0, y: 0, width: 320, height: 200))
+        pickerView.dataSource = self
+        pickerView.delegate = self
+        
+        // Configure popover appearance.
+        if let popoverController = alert.popoverPresentationController,
+            let showButton: UIButton = sender as? UIButton {
+            popoverController.sourceView = showButton
+            popoverController.sourceRect = showButton.bounds
+            popoverController.permittedArrowDirections = [.up, .down]
+        }
+        
+        alert.view.addSubview(pickerView)
+        
+        // The bottom constraint of the picker view is -44 from the bottom anchor of the
+        // alert view so that it doesn't cover the selection button. If the selection
+        // button is covered, it cannot be tapped.
+        let constraints: [NSLayoutConstraint] = [
+            pickerView.leadingAnchor.constraint(equalTo: alert.view.leadingAnchor, constant: 0),
+            pickerView.trailingAnchor.constraint(equalTo: alert.view.trailingAnchor, constant: 0),
+            pickerView.topAnchor.constraint(equalTo: alert.view.topAnchor),
+            pickerView.bottomAnchor.constraint(equalTo: alert.view.bottomAnchor, constant: -44),
+        ]
+        NSLayoutConstraint.activate(constraints)
+        
+        // Select the first reward by default.
+        pickerView.selectRow(0, inComponent: 0, animated: false)
+        self.pickerView(pickerView, didSelectRow: 0, inComponent: 0)
         
         // Present the alert
         delegate?.adPresentationViewController?.present(alert, animated: true, completion: nil)
@@ -164,17 +242,13 @@ class RewardedAdDataSource: NSObject, AdDataSource {
     // MARK: - Ad Loading
     
     private func loadAd() {
-        guard !isAdLoading else {
-            return
-        }
-        
-        isAdLoading = true
         clearStatus { [weak self] in
             self?.delegate?.adPresentationTableView.reloadData()
         }
         
         // Clear out previous reward.
         selectedReward = nil
+        grantedReward = nil
         
         // Load the rewarded ad.
         MPRewardedVideo.loadAd(withAdUnitID: adUnit.id, keywords: adUnit.keywords, userDataKeywords: adUnit.userDataKeywords, location: nil, mediationSettings: nil)
@@ -239,22 +313,30 @@ extension RewardedAdDataSource: MPRewardedVideoDelegate {
     // MARK: - MPRewardedVideoDelegate
     
     func rewardedVideoAdDidLoad(forAdUnitID adUnitID: String!) {
-        isAdLoading = false
         setStatus(for: .didLoad) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
+            if let strongSelf = self {
+                strongSelf.loadFailureReason = nil
+                strongSelf.playFailureReason = nil
+                strongSelf.delegate?.adPresentationTableView.reloadData()
+            }
         }
     }
     
     func rewardedVideoAdDidFailToLoad(forAdUnitID adUnitID: String!, error: Error!) {
-        isAdLoading = false
-        setStatus(for: .didFailToLoad, message: error.localizedDescription) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
+        setStatus(for: .didFailToLoad) { [weak self] in
+            if let strongSelf = self {
+                strongSelf.loadFailureReason = error.localizedDescription
+                strongSelf.delegate?.adPresentationTableView.reloadData()
+            }
         }
     }
     
     func rewardedVideoAdDidFailToPlay(forAdUnitID adUnitID: String!, error: Error!) {
-        setStatus(for: .didFailToPlay, message: error.localizedDescription) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
+        setStatus(for: .didFailToPlay) { [weak self] in
+            if let strongSelf = self {
+                strongSelf.playFailureReason = error.localizedDescription
+                strongSelf.delegate?.adPresentationTableView.reloadData()
+            }
         }
     }
     
@@ -301,16 +383,11 @@ extension RewardedAdDataSource: MPRewardedVideoDelegate {
     }
     
     func rewardedVideoAdShouldReward(forAdUnitID adUnitID: String!, reward: MPRewardedVideoReward!) {
-        let message = reward?.description ?? "No reward specified"
-        setStatus(for: .shouldRewardUser, message: message) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
-        }
-    }
-    
-    func didTrackImpression(withAdUnitID adUnitID: String!, impressionData: MPImpressionData!) {
-        let message = impressionData?.description ?? "No impression data"
-        setStatus(for: .didTrackImpression, message: message) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
+        setStatus(for: .shouldRewardUser) { [weak self] in
+            if let strongSelf = self {
+                strongSelf.grantedReward = reward
+                strongSelf.delegate?.adPresentationTableView.reloadData()
+            }
         }
     }
 }

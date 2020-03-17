@@ -1,14 +1,14 @@
 //
 //  StatusTableViewCell.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 import UIKit
 
-final class StatusTableViewCell: UITableViewCell, TableViewCellRegisterable {
+class StatusTableViewCell: UITableViewCell {
     // MARK: - IBOutlets
     @IBOutlet weak var stackView: UIStackView!
     @IBOutlet weak var nameLabel: UILabel!
@@ -29,16 +29,16 @@ final class StatusTableViewCell: UITableViewCell, TableViewCellRegisterable {
         messageLabel.text = error
         
         // Update text highlighted state
-        if #available(iOS 13.0, *) {
-            nameLabel.textColor = isHighlighted ? .label : .secondaryLabel
-        } else {
-            nameLabel.textColor = isHighlighted ? .black : .lightGray
-        }
-        accessoryType = isHighlighted ? .checkmark : .none
-
+        nameLabel.textColor = isHighlighted ? .black : .lightGray
+        
         // Update the visible state of the message label
         messageLabel.isHidden = (error == nil)
         
         setNeedsLayout()
     }
+}
+
+extension StatusTableViewCell: TableViewCellRegisterable {
+    // MARK: - TableViewCellRegisterable
+    static private(set) var reuseId: String = "StatusTableViewCell"
 }

@@ -1,7 +1,7 @@
 //
 //  MPNativeCache.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -9,7 +9,6 @@
 #import "MPNativeCache.h"
 #import "MPDiskLRUCache.h"
 #import "MPLogging.h"
-#import <UIKit/UIKit.h>
 
 typedef enum {
     MPNativeCacheMethodDisk = 0,
@@ -32,7 +31,7 @@ typedef enum {
 
 @implementation MPNativeCache
 
-+ (instancetype)sharedCache
++ (instancetype)sharedCache;
 {
     static dispatch_once_t once;
     static MPNativeCache *sharedCache;

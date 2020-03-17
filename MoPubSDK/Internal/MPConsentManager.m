@@ -1,7 +1,7 @@
 //
 //  MPConsentManager.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -15,7 +15,6 @@
 #import "MPConsentError.h"
 #import "MPConsentManager.h"
 #import "MPConstants.h"
-#import "MPError.h"
 #import "MPHTTPNetworkSession.h"
 #import "MPIdentityProvider.h"
 #import "MPLogging.h"
@@ -25,7 +24,6 @@
 #import "MPAdConversionTracker.h"
 
 // NSUserDefault keys
-static NSString * const kAdUnitIdUsedForConsentStorageKey        = @"com.mopub.mopub-ios-sdk.consent.ad.unit.id";
 static NSString * const kConsentedIabVendorListStorageKey        = @"com.mopub.mopub-ios-sdk.consented.iab.vendor.list";
 static NSString * const kConsentedPrivacyPolicyVersionStorageKey = @"com.mopub.mopub-ios-sdk.consented.privacy.policy.version";
 static NSString * const kConsentedVendorListVersionStorageKey    = @"com.mopub.mopub-ios-sdk.consented.vendor.list.version";
@@ -198,17 +196,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 }
 
 - (void)setShouldReacquireConsent:(BOOL)shouldReacquireConsent {
-    // Capture old `isConsentNeeded` value
-    BOOL oldIsConsentNeeded = self.isConsentNeeded;
-
-    // Update the cached value
     [NSUserDefaults.standardUserDefaults setBool:shouldReacquireConsent forKey:kShouldReacquireConsentStorageKey];
-
-    // Broadcast the `kMPConsentNeededNotification` if the `isConsentNeeded` computed property
-    // transitions from `NO` to `YES`.
-    if (!oldIsConsentNeeded && self.isConsentNeeded) {
-        [self notifyConsentNeeded];
-    }
 }
 
 #pragma mark - ISO Language Code
@@ -228,11 +216,10 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 - (void)grantConsent {
     MPLogInfo(@"Grant consent was called with publisher whitelist status of: %@whitelisted", self.isWhitelisted ? @"" : @"not ");
     if (!self.isWhitelisted) {
-        MPLogInfo(@"You do not have approval to use the grantConsent API. Please reach out to your account teams or support@mopub.com for more information.");
+        MPLogWarn(@"You do not have approval to use the grantConsent API. Please reach out to your account teams or support@mopub.com for more information.");
     }
 
     // Reset the reacquire consent flag since the user has taken action.
-    BOOL statusWasReacquired = self.shouldReacquireConsent;
     self.shouldReacquireConsent = NO;
 
     MPConsentStatus grantStatus = self.isWhitelisted ? MPConsentStatusConsented : MPConsentStatusPotentialWhitelist;
@@ -240,27 +227,32 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 
     // Grant consent and if the state has transitioned, immediately synchronize
     // with the server as this is an externally induced state change.
-    if ([self setCurrentStatus:grantStatus reason:grantReason statusWasReacquired:statusWasReacquired shouldBroadcast:YES]) {
-        MPLogDebug(@"Consent synchronization triggered by publisher granting consent");
+    if ([self setCurrentStatus:grantStatus reason:grantReason shouldBroadcast:YES]) {
         [self synchronizeConsentWithCompletion:^(NSError * _Nullable error) {
-            // Consent synchronization success/fail logging is already handled
-            // by `synchronizeConsentWithCompletion:`.
+            if (error) {
+                MPLogError(@"Consent synchronization failed: %@", error.localizedDescription);
+            }
+            else {
+                MPLogInfo(@"Consent synchronization completed");
+            }
         }];
     }
 }
 
 - (void)revokeConsent {
     // Reset the reacquire consent flag since the user has taken action.
-    BOOL statusWasReacquired = self.shouldReacquireConsent;
     self.shouldReacquireConsent = NO;
 
     // Revoke consent and if the state has transitioned, immediately synchronize
     // with the server as this is an externally induced state change.
-    if ([self setCurrentStatus:MPConsentStatusDenied reason:kConsentedChangedReasonPublisherDenied statusWasReacquired:statusWasReacquired shouldBroadcast:YES]) {
-        MPLogDebug(@"Consent synchronization triggered by publisher revoking consent");
+    if ([self setCurrentStatus:MPConsentStatusDenied reason:kConsentedChangedReasonPublisherDenied shouldBroadcast:YES]) {
         [self synchronizeConsentWithCompletion:^(NSError * _Nullable error) {
-            // Consent synchronization success/fail logging is already handled
-            // by `synchronizeConsentWithCompletion:`.
+            if (error) {
+                MPLogError(@"Consent synchronization failed: %@", error.localizedDescription);
+            }
+            else {
+                MPLogInfo(@"Consent synchronization completed");
+            }
         }];
     }
 }
@@ -274,13 +266,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 - (void)loadConsentDialogWithCompletion:(void (^)(NSError *error))completion {
     // Helper block to call completion if not nil
     void (^callCompletion)(NSError *error) = ^(NSError *error) {
-        if (error != nil) {
-            MPLogEvent([MPLogEvent consentDialogLoadFailedWithError:error]);
-        }
-        else {
-            MPLogEvent(MPLogEvent.consentDialogLoadSuccess);
-        }
-
         if (completion != nil) {
             completion(error);
         }
@@ -291,7 +276,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
         self.consentDialogViewController = nil;
         NSError *limitAdTrackingError = [NSError errorWithDomain:kConsentErrorDomain
                                                             code:MPConsentErrorCodeLimitAdTrackingEnabled
-                                                        userInfo:@{ NSLocalizedDescriptionKey: @"Consent dialog will not be loaded because Limit Ad Tracking is on" }];
+                                                        userInfo:nil];
         callCompletion(limitAdTrackingError);
         return;
     }
@@ -301,7 +286,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
         self.consentDialogViewController = nil;
         NSError *gdprIsNotApplicableError = [NSError errorWithDomain:kConsentErrorDomain
                                                                 code:MPConsentErrorCodeGDPRIsNotApplicable
-                                                            userInfo:@{ NSLocalizedDescriptionKey: @"Consent dialog will not be loaded because GDPR is not applicable" }];
+                                                            userInfo:nil];
         callCompletion(gdprIsNotApplicableError);
         return;
     }
@@ -352,22 +337,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 - (void)showConsentDialogFromViewController:(UIViewController *)viewController
                                     didShow:(void (^)(void))didShow
                                  didDismiss:(void (^)(void))didDismiss {
-    // Ensure that this method is invoked from the main thread.
-    if (!NSThread.isMainThread) {
-        __weak __typeof__(self) weakSelf = self;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf showConsentDialogFromViewController:viewController didShow:didShow didDismiss:didDismiss];
-        });
-        return;
-    }
-
-    // If `viewController` is already presenting the consent dialog modally, do nothing.
-    if (viewController.presentedViewController == self.consentDialogViewController) {
-        MPLogEvent([MPLogEvent error:NSError.consentDialogAlreadyShowing message:nil]);
-        return;
-    }
-
-    MPLogEvent(MPLogEvent.consentDialogShowAttempted);
     if (self.isConsentDialogLoaded) {
         [viewController presentViewController:self.consentDialogViewController
                                      animated:YES
@@ -375,12 +344,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 
         // Save @c didDismiss block for later
         self.consentDialogDidDismissCompletionBlock = didDismiss;
-        MPLogEvent(MPLogEvent.consentDialogShowSuccess);
-    }
-    // Consent dialog not loaded
-    else {
-        NSError * error = NSError.noConsentDialogLoaded;
-        MPLogEvent([MPLogEvent consentDialogShowFailedWithError:error]);
     }
 }
 
@@ -388,22 +351,24 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 - (void)consentDialogViewControllerDidReceiveConsentResponse:(BOOL)response
                                  consentDialogViewController:(MPConsentDialogViewController *)consentDialogViewController {
     // Reset the reacquire consent flag since the user has taken action.
-    BOOL statusWasReacquired = self.shouldReacquireConsent;
     self.shouldReacquireConsent = NO;
 
     // Set consent status
     MPConsentStatus status = (response ? MPConsentStatusConsented : MPConsentStatusDenied);
     NSString * changeReason = (response ? kConsentedChangedReasonGranted : kConsentedChangedReasonDenied);
-    BOOL didTransition = [self setCurrentStatus:status reason:changeReason statusWasReacquired:statusWasReacquired shouldBroadcast:YES];
+    BOOL didTransition = [self setCurrentStatus:status reason:changeReason shouldBroadcast:YES];
 
     // Synchronize only if there was a successful state transition.
     // It is possible that the user responded to the consent dialog while
     // in a "do not track" state.
     if (didTransition) {
-        MPLogDebug(@"Consent synchronization triggered by user responding to consent dialog");
         [self synchronizeConsentWithCompletion:^(NSError * _Nullable error) {
-            // Consent synchronization success/fail logging is already handled
-            // by `synchronizeConsentWithCompletion:`.
+            if (error) {
+                MPLogInfo(@"Error when syncing consent dialog response: %@", error);
+                return;
+            }
+
+            MPLogInfo(@"Did sync consent dialog response.");
         }];
     }
 }
@@ -415,15 +380,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 }
 
 - (void)consentDialogViewControllerDidDismiss:(MPConsentDialogViewController *)consentDialogViewController {
-    // Ensure that this method is invoked from the main thread.
-    if (!NSThread.isMainThread) {
-        __weak __typeof__(self) weakSelf = self;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf consentDialogViewControllerDidDismiss:consentDialogViewController];
-        });
-        return;
-    }
-
     // Execute @c consentDialogWillDismissCompletionBlock if needed
     if (self.consentDialogDidDismissCompletionBlock) {
         self.consentDialogDidDismissCompletionBlock();
@@ -441,29 +397,13 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     [self checkForDoNotTrackAndTransition];
     // If IDFA changed, status will be set to MPConsentStatusUnknown.
     [self checkForIfaChange];
-
-    /*
-     ADF-4318: This early return is to avoid a `NSAssert` crash in iPadOS 13+ debug build.
-
-     `ApplicationWillEnterForegroundNotification` is posted right after the first fresh
-     install app launch for iPadOS 13 multi-scene, while it's not posted after the first fresh
-     install app launch for the single-scene case (pre iOS 13).
-
-     The consent manager shared instance is called during `applicationDidFinishLaunching` and thus
-     starts observing `ApplicationWillEnterForegroundNotification` before MoPub SDK and this consent
-     manager is initialized with an ad unit ID. Consequently, the `NSAssert` in
-     `synchronizeConsentWithCompletion` is always triggered and crash debug build of this app. So,
-     to avoid such crash in debug build, we should avoid `synchronizeConsentWithCompletion` before
-     `adUnitIdUsedForConsent` is assigned.
-     */
-    if (self.adUnitIdUsedForConsent.length == 0) {
-        return;
-    }
-
-    MPLogDebug(@"Consent synchronization triggered by application foreground.");
     [self synchronizeConsentWithCompletion:^(NSError * _Nullable error) {
-        // Consent synchronization success/fail logging is already handled
-        // by `synchronizeConsentWithCompletion:`.
+        if (error) {
+            MPLogError(@"Consent synchronization failed: %@", error.localizedDescription);
+        }
+        else {
+            MPLogInfo(@"Consent synchronization completed");
+        }
     }];
 }
 
@@ -473,15 +413,11 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
  Broadcasts a @c NSNotification that the consent status has changed.
  @param newStatus The new consent state.
  @param oldStatus The previous consent state.
- @param reasonForChange Optional reason for consent state change.
  @param canCollectPii Flag indicating that collection of PII is allowed.
  */
 - (void)notifyConsentChangedTo:(MPConsentStatus)newStatus
                  fromOldStatus:(MPConsentStatus)oldStatus
-                        reason:(NSString * _Nullable)reasonForChange
                  canCollectPii:(BOOL)canCollectPii {
-    MPLogEvent([MPLogEvent consentUpdatedTo:newStatus from:oldStatus reason:reasonForChange canCollectPersonalInfo:canCollectPii]);
-
     // Build the NSNotification userInfo dictionary.
     NSDictionary * userInfo = @{ kMPConsentChangedInfoNewConsentStatusKey: @(newStatus),
                                  kMPConsentChangedInfoPreviousConsentStatusKey: @(oldStatus),
@@ -497,14 +433,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     [self handlePersonalDataOnStateChangeTo:newStatus fromOldStatus:oldStatus];
 }
 
-/**
- Logs that consent needs to be acquired/reacquired.
- This should only be fired when @c isConsentNeeded changes from @c NO to @c YES.
- */
-- (void)notifyConsentNeeded {
-    MPLogEvent(MPLogEvent.consentShouldShowDialog);
-}
-
 #pragma mark - Ad Server Communication
 
 /**
@@ -514,8 +442,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
  @param completion Required completion block to listen for the result of the synchronization.
  */
 - (void)synchronizeConsentWithCompletion:(void (^ _Nonnull)(NSError * error))completion {
-    MPLogEvent(MPLogEvent.consentSyncAttempted);
-
     // Invalidate the next update timer since we are synchronizing right now.
     [self.nextUpdateTimer invalidate];
     self.nextUpdateTimer = nil;
@@ -524,7 +450,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     // is no longer required. This call will complete without error and no
     // next update timer will be created.
     if (self.isGDPRApplicable == MPBoolNo) {
-        MPLogEvent([MPLogEvent consentSyncCompletedWithMessage:@"GDPR not applicable, consent synchronization will complete immediately"]);
+        MPLogInfo(@"GDPR not applicable, consent synchronization will complete immediately");
         completion(nil);
         return;
     }
@@ -536,19 +462,17 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     // In the case that raw (MoPub) GDPR applicability is unknown, we should perform a sync
     // to determine the final state.
     if (!MPIdentityProvider.advertisingTrackingEnabled && self.ifaForConsent == nil && self.rawIsGDPRApplicable != MPBoolUnknown) {
-        MPLogEvent([MPLogEvent consentSyncCompletedWithMessage:@"Currently in a do not track state, consent synchronization will complete immediately"]);
+        MPLogInfo(@"Currently in a do not track state, consent synchronization will complete immediately");
         completion(nil);
         return;
     }
 
     // Before beginning the sync, check for a nil or empty ad unit ID, and output to the log if there's an issue.
     // Otherwise, output the ad unit ID to the log.
-    if (self.adUnitIdUsedForConsent.length == 0) {
-        NSString * description = @"Warning: no ad unit available for GDPR sync. Please make sure that the SDK is initialized correctly via `initializeSdkWithConfiguration:completion:` as soon as possible after app startup.";
-        MPLogInfo(@"%@", description);
-        NSAssert(NO, description); // Crash the app if this is set up incorrectly
+    if (self.adUnitIdUsedForConsent == nil || [self.adUnitIdUsedForConsent isEqualToString:@""]) {
+        MPLogError(@"Warning: no ad unit available for GDPR sync. Please make sure that the SDK is initialized correctly via `initializeSdkWithConfiguration:completion:` as soon as possible after app startup.");
     } else {
-        MPLogDebug(@"Ad unit used for GDPR sync: %@", self.adUnitIdUsedForConsent);
+        MPLogInfo(@"Ad unit used for GDPR sync: %@", self.adUnitIdUsedForConsent);
     }
 
     // Capture the current status being synchronized with the server
@@ -563,62 +487,50 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     [MPHTTPNetworkSession startTaskWithHttpRequest:syncRequest responseHandler:^(NSData * _Nonnull data, NSHTTPURLResponse * _Nonnull response) {
         __typeof__(self) strongSelf = weakSelf;
 
-        [strongSelf didFinishSynchronizationWithData:data
-                                  synchronizedStatus:synchronizedStatus
-                                          completion:completion];
+        // Update the last successfully synchronized state.
+        // We still update this state even if we failed to parse the response
+        // because this is a reflection of what we last sent to the server.
+        // If we've made it this far, it means that the `synchronizedStatus` was
+        // successfully sent to the server. However, it may be the case that the
+        // server sends us back an invalid response.
+        [NSUserDefaults.standardUserDefaults setObject:synchronizedStatus forKey:kLastSynchronizedConsentStatusStorageKey];
+
+        // Reset the GDPR applies transition state since it was successfully sent to
+        // ad server.
+        strongSelf.isForcedGDPRAppliesTransition = NO;
+
+        // Deserialize the JSON response and attempt to parse it
+        NSError * deserializationError = nil;
+        NSDictionary * json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&deserializationError];
+        if (deserializationError != nil) {
+            // Schedule the next timer and complete with error.
+            strongSelf.nextUpdateTimer = [strongSelf newNextUpdateTimer];
+            MPLogError(@"%@", deserializationError.localizedDescription);
+            completion(deserializationError);
+            return;
+        }
+
+        // Attempt to parse and update the consent state
+        NSError * parseError = nil;
+        if ([strongSelf updateConsentStateWithParameters:json]) {
+            MPLogTrace(@"Successfully parsed consent synchronization response");
+        }
+        else {
+            parseError = [NSError errorWithDomain:kConsentErrorDomain code:MPConsentErrorCodeFailedToParseSynchronizationResponse userInfo:@{ NSLocalizedDescriptionKey: @"Failed to parse consent synchronization response; one or more required fields are missing" }];
+            MPLogError(@"%@", parseError.localizedDescription);
+        }
+
+        // Schedule the next timer and complete.
+        strongSelf.nextUpdateTimer = [strongSelf newNextUpdateTimer];
+        completion(parseError);
     } errorHandler:^(NSError * _Nonnull error) {
         __typeof__(self) strongSelf = weakSelf;
 
-        [strongSelf didFailSynchronizationWithError:error completion:completion];
+        // Schedule the next timer and complete with error.
+        strongSelf.nextUpdateTimer = [strongSelf newNextUpdateTimer];
+        MPLogError(@"%@", error.localizedDescription);
+        completion(error);
     }];
-}
-
-- (void)didFinishSynchronizationWithData:(NSData *)data synchronizedStatus:(NSString *)synchronizedStatus completion:(void (^ _Nonnull)(NSError * error))completion {
-    // Update the last successfully synchronized state.
-    // We still update this state even if we failed to parse the response
-    // because this is a reflection of what we last sent to the server.
-    // If we've made it this far, it means that the `synchronizedStatus` was
-    // successfully sent to the server. However, it may be the case that the
-    // server sends us back an invalid response.
-    [NSUserDefaults.standardUserDefaults setObject:synchronizedStatus forKey:kLastSynchronizedConsentStatusStorageKey];
-
-    // Cache the working adunit ID
-    [self cacheAdUnitIdUsedForConsent];
-
-    // Reset the GDPR applies transition state since it was successfully sent to
-    // ad server.
-    self.isForcedGDPRAppliesTransition = NO;
-
-    // Deserialize the JSON response and attempt to parse it
-    NSError * deserializationError = nil;
-    NSDictionary * json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&deserializationError];
-    if (deserializationError != nil) {
-        // Complete with error.
-        MPLogEvent([MPLogEvent consentSyncFailedWithError:deserializationError]);
-        completion(deserializationError);
-    }
-    else if (![self updateConsentStateWithParameters:json]) {
-        // Attempt to parse and update the consent state
-        NSError * parseError = [NSError errorWithDomain:kConsentErrorDomain code:MPConsentErrorCodeFailedToParseSynchronizationResponse userInfo:@{ NSLocalizedDescriptionKey: @"Failed to parse consent synchronization response; one or more required fields are missing" }];
-        MPLogEvent([MPLogEvent consentSyncFailedWithError:parseError]);
-        completion(parseError);
-    }
-    else {
-        // Success
-        MPLogEvent([MPLogEvent consentSyncCompletedWithMessage:nil]);
-        completion(nil);
-    }
-
-    // `updateConsentStateWithParameters` might update `syncFrequency`, which is referenced in
-    // `newNextUpdateTimer`, so, call `updateConsentStateWithParameters` before `newNextUpdateTimer`
-    self.nextUpdateTimer = [self newNextUpdateTimer];
-}
-
-- (void)didFailSynchronizationWithError:(NSError *)error completion:(void (^ _Nonnull)(NSError * error))completion {
-    // Schedule the next timer and complete with error.
-    self.nextUpdateTimer = [self newNextUpdateTimer];
-    MPLogEvent([MPLogEvent consentSyncFailedWithError:error]);
-    completion(error);
 }
 
 #pragma mark - Next Update Timer
@@ -636,10 +548,13 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 
 - (void)onNextUpdateFiredWithTimer {
     // Synchronize with the server because it's time.
-    MPLogDebug(@"Scheduled consent synchronization timer fired.");
     [self synchronizeConsentWithCompletion:^(NSError * _Nullable error) {
-        // Consent synchronization success/fail logging is already handled
-        // by `synchronizeConsentWithCompletion:`.
+        if (error) {
+            MPLogError(@"Consent synchronization failed: %@", error.localizedDescription);
+        }
+        else {
+            MPLogInfo(@"Consent synchronization completed");
+        }
     }];
 }
 
@@ -659,14 +574,14 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     BOOL trackingAllowed = ASIdentifierManager.sharedManager.advertisingTrackingEnabled;
     MPConsentStatus status = self.currentStatus;
     if (status != MPConsentStatusDoNotTrack && !trackingAllowed) {
-        didTransition = [self setCurrentStatus:MPConsentStatusDoNotTrack reason:kConsentedChangedReasonDoNotTrackEnabled statusWasReacquired:NO shouldBroadcast:YES];
+        didTransition = [self setCurrentStatus:MPConsentStatusDoNotTrack reason:kConsentedChangedReasonDoNotTrackEnabled shouldBroadcast:YES];
     }
     // Transitioned from a "do not track" state to an "allowed to track" state.
     // If the previously cached state was "deny consent"
     else if (status == MPConsentStatusDoNotTrack && trackingAllowed) {
         MPConsentStatus transitionToState = (self.rawConsentStatus == MPConsentStatusDenied ? MPConsentStatusDenied : MPConsentStatusUnknown);
         NSString * transitionReason = (transitionToState == MPConsentStatusDenied ? kConsentedChangedReasonDoNotTrackDisabled : kConsentedChangedReasonDoNotTrackDisabledNeedConsent);
-        didTransition = [self setCurrentStatus:transitionToState reason:transitionReason statusWasReacquired:NO shouldBroadcast:YES];
+        didTransition = [self setCurrentStatus:transitionToState reason:transitionReason shouldBroadcast:YES];
     }
 
     return didTransition;
@@ -688,7 +603,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 
     BOOL didTransition = NO;
     if (self.isWhitelisted) {
-        didTransition = [self setCurrentStatus:MPConsentStatusConsented reason:kConsentedChangedReasonWhitelistGranted statusWasReacquired:NO shouldBroadcast:NO];
+        didTransition = [self setCurrentStatus:MPConsentStatusConsented reason:kConsentedChangedReasonWhitelistGranted shouldBroadcast:NO];
     }
 
     return didTransition;
@@ -698,40 +613,25 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
  Updates the local consent status.
  @param currentStatus The updated status.
  @param reasonForChange Reason for the change in status. This should map to an entry in @c MPConsentChangedReason.h
- @param statusWasReacquired Was the status forcibly reacquired due to the @c reacquire_consent flag sent by the Ad Server
  @param shouldBroadcast Flag indicating if the change in status broadcasted.
  @return @c YES if the consent status was successfully changed; @c NO otherwise.
  */
 - (BOOL)setCurrentStatus:(MPConsentStatus)currentStatus
                   reason:(NSString * _Nonnull)reasonForChange
-     statusWasReacquired:(BOOL)statusWasReacquired
          shouldBroadcast:(BOOL)shouldBroadcast {
     // Compare the current consent status with the proposed status.
-    // Nothing needs to be done if we're not changing state and the current
-    // status was not forcibly reacquired. Forced reacquisition of status,
-    // even if it results in the same status, is a cause for an update.
+    // Nothing needs to be done if we're not changing state.
     MPConsentStatus oldStatus = self.currentStatus;
-    if (oldStatus == currentStatus && !statusWasReacquired) {
-        MPLogInfo(@"Attempted to set consent status to same value");
+    if (oldStatus == currentStatus) {
+        MPLogWarn(@"Attempted to set consent status to same value");
         return NO;
-    }
-
-    // Capture old `isConsentNeeded` value
-    BOOL oldIsConsentNeeded = self.isConsentNeeded;
-
-    // Clear the `shouldReacquireConsent` latch when transitioning to DNT or Unknown
-    // since it no longer makes sense to force a reacquisition.
-    // This state must be set after capturing `oldIsConsentNeeded` since this
-    // will affect `self.isConsentNeeded`.
-    if (currentStatus == MPConsentStatusDoNotTrack || currentStatus == MPConsentStatusUnknown) {
-        self.shouldReacquireConsent = NO;
     }
 
     // Disallow setting consent status if we are currently in a "do not track" state
     // and will not transition out of it.
     BOOL trackingEnabledOnDevice = MPIdentityProvider.advertisingTrackingEnabled;
     if (oldStatus == MPConsentStatusDoNotTrack && !trackingEnabledOnDevice) {
-        MPLogInfo(@"Attempted to set consent status while in a do not track state");
+        MPLogWarn(@"Attempted to set consent status while in a do not track state");
         return NO;
     }
 
@@ -759,34 +659,26 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     // Copy the current privacy policy version, vendor list version, and IAB vendor list
     // to the equivalent consented fields under the following conditions:
     // 1. Consent has been updated to "potential whitelist", or
-    // 2. Consent has been updated to "consented" from a previously not "potential whitelist" state, or
-    // 3. Consent has been updated to "denied"
+    // 2. Consent has been updated to "consented" from a previously not "potential whitelist" state
     if (currentStatus == MPConsentStatusPotentialWhitelist ||
-        (currentStatus == MPConsentStatusConsented && oldStatus != MPConsentStatusPotentialWhitelist) ||
-        currentStatus == MPConsentStatusDenied) {
+        (currentStatus == MPConsentStatusConsented && oldStatus != MPConsentStatusPotentialWhitelist)) {
         [defaults setObject:self.iabVendorList forKey:kConsentedIabVendorListStorageKey];
         [defaults setObject:self.privacyPolicyVersion forKey:kConsentedPrivacyPolicyVersionStorageKey];
         [defaults setObject:self.vendorListVersion forKey:kConsentedVendorListVersionStorageKey];
     }
-    // The state has transitioned out of a state where "consented" versions no longer apply.
-    else if (currentStatus == MPConsentStatusUnknown ||
-             currentStatus == MPConsentStatusDoNotTrack) {
+    // If the state has transitioned out of the "consented" state, remove any previously
+    // consented versions as they no longer apply.
+    else if (oldStatus == MPConsentStatusConsented) {
         [defaults setObject:nil forKey:kConsentedIabVendorListStorageKey];
         [defaults setObject:nil forKey:kConsentedPrivacyPolicyVersionStorageKey];
         [defaults setObject:nil forKey:kConsentedVendorListVersionStorageKey];
     }
 
     if (shouldBroadcast) {
-        [self notifyConsentChangedTo:self.currentStatus fromOldStatus:oldStatus reason:reasonForChange canCollectPii:self.canCollectPersonalInfo];
-
-        // Broadcast the `kMPConsentNeededNotification` if the `isConsentNeeded` computed property
-        // transitions from `NO` to `YES`.
-        if (!oldIsConsentNeeded && self.isConsentNeeded) {
-            [self notifyConsentNeeded];
-        }
+        [self notifyConsentChangedTo:self.currentStatus fromOldStatus:oldStatus canCollectPii:self.canCollectPersonalInfo];
     }
 
-    MPLogDebug(@"Consent state changed to %@: %@", [NSString stringFromConsentStatus:currentStatus], reasonForChange);
+    MPLogInfo(@"Consent state changed to %@: %@", [NSString stringFromConsentStatus:currentStatus], reasonForChange);
 
     return YES;
 }
@@ -797,7 +689,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
  @return @c YES if the parameters were successfully parsed; @c NO otherwise.
  */
 - (BOOL)updateConsentStateWithParameters:(NSDictionary * _Nonnull)newState {
-    MPLogDebug(@"Attempting to update consent with new state:\n%@", newState);
+    MPLogTrace(@"Attempting to update consent with new state:\n%@", newState);
 
     // Validate required parameters
     NSString * isWhitelistedValue = newState[kIsWhitelistedKey];
@@ -811,14 +703,13 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
         currentIabVendorListHash == nil ||
         vendorListUrl == nil || vendorListVersion == nil ||
         privacyPolicyUrl == nil || privacyPolicyVersion == nil) {
-        MPLogInfo(@"Failed to parse new state. Missing required fields.");
+        MPLogError(@"Failed to parse new state. Missing required fields.");
         return NO;
     }
 
     // Extract the old field values for comparison.
     MPConsentStatus oldStatus = self.currentStatus;
     MPBool oldGDPRApplicableStatus = self.isGDPRApplicable;
-    BOOL oldIsConsentNeeded = self.isConsentNeeded;
 
     // Update the required fields.
     NSUserDefaults * defaults = NSUserDefaults.standardUserDefaults;
@@ -886,13 +777,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 
     // Broadcast the `kMPConsentChangedNotification` if needed.
     if ((oldStatus != self.currentStatus) || (oldGDPRApplicableStatus != self.isGDPRApplicable)) {
-        [self notifyConsentChangedTo:self.currentStatus fromOldStatus:oldStatus reason:consentChangeReason canCollectPii:self.canCollectPersonalInfo];
-    }
-
-    // Broadcast the `kMPConsentNeededNotification` if the `isConsentNeeded` computed property
-    // transitions from `NO` to `YES`.
-    if (!oldIsConsentNeeded && self.isConsentNeeded) {
-        [self notifyConsentNeeded];
+        [self notifyConsentChangedTo:self.currentStatus fromOldStatus:oldStatus canCollectPii:self.canCollectPersonalInfo];
     }
 
     return YES;
@@ -906,11 +791,11 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
                          shouldBroadcast:(BOOL)shouldBroadcast {
     if (shouldForceExplicitNo) {
         self.shouldReacquireConsent = NO;
-        [self setCurrentStatus:MPConsentStatusDenied reason:consentChangeReason statusWasReacquired:NO shouldBroadcast:shouldBroadcast];
+        [self setCurrentStatus:MPConsentStatusDenied reason:consentChangeReason shouldBroadcast:shouldBroadcast];
     }
     else if (shouldInvalidateConsent) {
         self.shouldReacquireConsent = NO;
-        [self setCurrentStatus:MPConsentStatusUnknown reason:consentChangeReason statusWasReacquired:NO shouldBroadcast:shouldBroadcast];
+        [self setCurrentStatus:MPConsentStatusUnknown reason:consentChangeReason shouldBroadcast:shouldBroadcast];
     }
     else if (shouldReacquireConsent) {
         self.shouldReacquireConsent = YES;
@@ -920,44 +805,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     if (shouldForceGDPRApplies) {
         self.forceIsGDPRApplicable = YES;
     }
-}
-
-#pragma mark - Caching Adunit ID
-
-- (NSString *)adUnitIdUsedForConsent {
-    // If an adunit ID is cached, use the cached one rather than what's currently stored in the ivar,
-    // as the cache is known good.
-    NSString * cachedAdUnitId = [NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey];
-
-    if (cachedAdUnitId == nil) {
-        return _adUnitIdUsedForConsent;
-    }
-
-    return cachedAdUnitId;
-}
-
-- (void)cacheAdUnitIdUsedForConsent {
-    // If an adunit ID is already cached, we know it's good, so do not cache a new one.
-    NSString * cachedAdUnitId = [NSUserDefaults.standardUserDefaults stringForKey:kAdUnitIdUsedForConsentStorageKey];
-    if (cachedAdUnitId != nil) {
-        return;
-    }
-
-    [NSUserDefaults.standardUserDefaults setObject:self.adUnitIdUsedForConsent forKey:kAdUnitIdUsedForConsentStorageKey];
-}
-
-- (void)setAdUnitIdUsedForConsent:(NSString *)adUnitIdUsedForConsent isKnownGood:(BOOL)isKnownGood {
-    self.adUnitIdUsedForConsent = adUnitIdUsedForConsent;
-
-    if (isKnownGood) {
-        [self cacheAdUnitIdUsedForConsent];
-    }
-}
-
-- (void)clearAdUnitIdUsedForConsent {
-    [NSUserDefaults.standardUserDefaults setObject:nil forKey:kAdUnitIdUsedForConsentStorageKey];
-    // Using ivar here to get around warning about nullability
-    _adUnitIdUsedForConsent = nil;
 }
 
 @end
@@ -977,9 +824,6 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
         return;
     }
 
-    // Capture old `isConsentNeeded` value
-    BOOL oldIsConsentNeeded = self.isConsentNeeded;
-
     // Capture old can collect PII value
     BOOL oldCanCollectPII = self.canCollectPersonalInfo;
 
@@ -989,28 +833,25 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
 
     // Broadcast the `kMPConsentChangedNotification` if needed.
     if (oldCanCollectPII != self.canCollectPersonalInfo) {
-        [self notifyConsentChangedTo:self.currentStatus fromOldStatus:self.currentStatus reason:nil canCollectPii:self.canCollectPersonalInfo];
-    }
-
-    // Broadcast the `kMPConsentNeededNotification` if the `isConsentNeeded` computed property
-    // transitions from `NO` to `YES`.
-    if (!oldIsConsentNeeded && self.isConsentNeeded) {
-        [self notifyConsentNeeded];
+        [self notifyConsentChangedTo:self.currentStatus fromOldStatus:self.currentStatus canCollectPii:self.canCollectPersonalInfo];
     }
 
     // Start sync cycle if needed
     if (self.adUnitIdUsedForConsent != nil && // If @c adUnitIdUsedForConsent is non-nil (i.e., if SDK init has been called; otherwise the sync will happen as part of init) AND
         (forceIsGDPRApplicable && self.rawIsGDPRApplicable == MPBoolNo)) { // If GDPR was not already applicable and it has become so (otherwise there's already an active sync cycle and the effective @c isGDPRApplilcableValue didn't actually change)
-        MPLogDebug(@"Consent synchronization triggered by forcing GDPR applicable");
         [self synchronizeConsentWithCompletion:^(NSError *error){
-            // Consent synchronization success/fail logging is already handled
-            // by `synchronizeConsentWithCompletion:`.
+            if (error) {
+                MPLogError(@"Force GDPR consent synchronization failed: %@", error.localizedDescription);
+            }
+            else {
+                MPLogInfo(@"Force GDPR consent synchronization completed");
+            }
         }];
     }
 }
 
 - (BOOL)forceIsGDPRApplicable {
-    return [NSUserDefaults.standardUserDefaults boolForKey:kForceGDPRAppliesStorageKey];
+    return [[NSUserDefaults standardUserDefaults] boolForKey:kForceGDPRAppliesStorageKey];
 }
 
 #pragma mark - Read Only Properties
@@ -1143,11 +984,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     [self updateAppConversionTracking];
 
     if (oldStatus == MPConsentStatusConsented && newStatus != MPConsentStatusConsented) {
-        MPLogDebug(@"Consent synchronization triggered by one last time");
         [self synchronizeConsentWithCompletion:^(NSError * _Nullable error) {
-            // Consent synchronization success/fail logging is already handled
-            // by `synchronizeConsentWithCompletion:`.
-
             if (!error) {
                 [self removeIfa];
             }
@@ -1177,7 +1014,7 @@ static NSString * const kMacroReplaceLanguageCode = @"%%LANGUAGE%%";
     if (self.currentStatus == MPConsentStatusConsented && ![oldIfa isEqualToString:newIfa] && newIfa != nil) {
         [NSUserDefaults.standardUserDefaults removeObjectForKey:kLastSynchronizedConsentStatusStorageKey];
         [NSUserDefaults.standardUserDefaults removeObjectForKey:kIfaForConsentStorageKey];
-        [self setCurrentStatus:MPConsentStatusUnknown reason:kConsentedChangedReasonIfaChanged statusWasReacquired:NO shouldBroadcast:YES];
+        [self setCurrentStatus:MPConsentStatusUnknown reason:kConsentedChangedReasonIfaChanged shouldBroadcast:YES];
     }
 }
 

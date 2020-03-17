@@ -6,9 +6,11 @@ Sign up for an account at [http://app.mopub.com/](http://app.mopub.com/).
 
 ## Need Help?
 
-You can find integration documentation on our [developer help site](https://developers.mopub.com/publishers/ios/get-started/). Additional documentation can be found [here](https://www.mopub.com/resources/docs).
+You can find integration documentation on our [wiki](https://github.com/mopub/mopub-ios-sdk/wiki/Getting-Started) and additional help documentation on our [developer help site](https://www.mopub.com/resources/docs).
 
 To file an issue with our team, email [support@mopub.com](mailto:support@mopub.com).
+
+**Please Note: We no longer accept GitHub Issues**
 
 ## New Pull Requests?
 
@@ -23,7 +25,7 @@ If you do not remove or disable IAS's and/or Moat’s technology in accordance w
 
 The MoPub SDK supports multiple methods for installing the library in a project.
 
-The current version of the SDK is 5.11.0
+The current version of the SDK is 5.4.0
 
 ### Installation with CocoaPods
 
@@ -38,11 +40,11 @@ To integrate MoPub SDK into your Xcode project using CocoaPods, specify it in yo
 
 ```
 source 'https://github.com/CocoaPods/Specs.git'
-platform :ios, '9.0'
+platform :ios, '8.0'
 use_frameworks!
 
 target 'MyApp' do
-  pod 'mopub-ios-sdk', '~> 5.9'
+  pod 'mopub-ios-sdk', '~> 5.0'
 end
 ```
 
@@ -56,7 +58,7 @@ $ pod install
 
 MoPub provides a prepackaged archive of the dynamic framework:
 
-- **[MoPub SDK Framework.zip](https://github.com/mopub/mopub-ios-sdk/releases/download/5.11.0/mopub-framework-5.11.0.zip)**
+- **[MoPub SDK Framework.zip](http://bit.ly/2OV5fiw)**
 
   Includes everything you need to serve HTML, MRAID, and Native MoPub advertisements.  Third party ad networks are not included.
 
@@ -66,11 +68,11 @@ Add the dynamic framework to the target's Embedded Binaries section of the Gener
 
 MoPub provides two prepackaged archives of source code:
 
-- **[MoPub Base SDK.zip](https://github.com/mopub/mopub-ios-sdk/releases/download/5.11.0/mopub-base-5.11.0.zip)**
+- **[MoPub Base SDK.zip](http://bit.ly/2bH8ObO)**
 
   Includes everything you need to serve HTML, MRAID, and Native MoPub advertisements.  Third party ad networks are not included.
 
-- **[MoPub Base SDK Excluding Native.zip](https://github.com/mopub/mopub-ios-sdk/releases/download/5.11.0/mopub-nonnative-5.11.0.zip)**
+- **[MoPub Base SDK Excluding Native.zip](http://bit.ly/2bCCgRw)**
 
   Includes everything you need to serve HTML and MRAID advertisements.  Third party ad networks and Native MoPub advertisements are not included.
 
@@ -83,14 +85,14 @@ Integration instructions are available on the [wiki](https://github.com/mopub/mo
 Please view the [changelog](https://github.com/mopub/mopub-ios-sdk/blob/master/CHANGELOG.md) for details.
 
 - **Features**
-  - Update GDPR logic to allow MoPub to reacquire consent for new vendors.
-  - Update our support for OpenRTB Native Ads to version 1.2 and add an optional `sponsored` text field for native ads.
-  - Removed deprecated custom event method `requestAdWithSize:customEventInfo:` in `MPBannerCustomEvent`, `requestInterstitialWithCustomEventInfo:` in `MPInterstitialCustomEvent`, `requestRewardedVideoWithCustomEventInfo:` in `MPRewardedVideoCustomEvent`, and `requestAdWithCustomEventInfo:` in `MPNativeCustomEvent`.
+  - SDK distribution as a dynamic framework is now available.
+  - Local extras are now supported for all ad formats.
 
 - **Bug Fixes**
-  - Fixed non-native SDK target compilation error.
-  - Fixed potential deadlock in `MPConsentManager` when scheduling `MPTimer`. 
-  - Fixed potential crash in `MPTableViewAdPlacer` and `MPCollectionViewAdPlacer`.
+  - HTTP error codes now include the localized error description.
+  - Added missing mraid.js file protections when showing MRAID ads.
+  - Fixed native video crash.
+  - Fixed native ad timeout timer invalidation. 
 
 See the [Getting Started Guide](https://github.com/mopub/mopub-ios-sdk/wiki/Getting-Started#app-transport-security-settings) for instructions on setting up ATS in your app.
 
@@ -116,8 +118,8 @@ If you would like to opt out of viewability measurement but do not want to modif
 
 ## Requirements
 
-- iOS 9.0 and up
-- Xcode 11.0 and up
+- iOS 8.0 and up
+- Xcode 9.0 and up
 
 ## License
 

@@ -1,7 +1,7 @@
 //
 //  MPHTTPNetworkSession.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -212,7 +212,7 @@ didCompleteWithError:(nullable NSError *)error {
 
     // Validate that response is not an error.
     if (error != nil) {
-        MPLogEvent([MPLogEvent error:error message:nil]);
+        MPLogError(@"Network request failed with: %@", error.localizedDescription);
         safe_block(taskData.errorHandler, error);
         return;
     }
@@ -220,8 +220,8 @@ didCompleteWithError:(nullable NSError *)error {
     // Validate response is a HTTP response.
     NSHTTPURLResponse * httpResponse = [task.response isKindOfClass:[NSHTTPURLResponse class]] ? (NSHTTPURLResponse *)task.response : nil;
     if (httpResponse == nil) {
-        NSError * notHttpResponseError = [NSError networkResponseIsNotHTTP];
-        MPLogEvent([MPLogEvent error:notHttpResponseError message:nil]);
+        NSError * notHttpResponseError = [NSError errorWithDomain:kMoPubSDKNetworkDomain code:MOPUBErrorUnexpectedNetworkResponse userInfo:@{ NSLocalizedDescriptionKey: @"response is not of type NSHTTPURLResponse" }];
+        MPLogError(@"Network request failed with: %@", notHttpResponseError.localizedDescription);
         safe_block(taskData.errorHandler, notHttpResponseError);
         return;
     }
@@ -230,15 +230,15 @@ didCompleteWithError:(nullable NSError *)error {
     // See https://en.wikipedia.org/wiki/List_of_HTTP_status_codes for all valid status codes.
     if (httpResponse.statusCode >= 400) {
         NSError * not200ResponseError = [NSError networkErrorWithHTTPStatusCode:httpResponse.statusCode];
-        MPLogEvent([MPLogEvent error:not200ResponseError message:nil]);
+        MPLogError(@"Network request failed with: %@", not200ResponseError.localizedDescription);
         safe_block(taskData.errorHandler, not200ResponseError);
         return;
     }
 
     // Validate that there is data
     if (taskData.responseData == nil) {
-        NSError * noDataError = [NSError networkResponseContainedNoData];
-        MPLogEvent([MPLogEvent error:noDataError message:nil]);
+        NSError * noDataError = [NSError errorWithDomain:kMoPubSDKNetworkDomain code:MOPUBErrorNoNetworkData userInfo:@{ NSLocalizedDescriptionKey: @"no data found in the NSHTTPURLResponse" }];
+        MPLogError(@"Network request failed with: %@", noDataError.localizedDescription);
         safe_block(taskData.errorHandler, noDataError);
         return;
     }

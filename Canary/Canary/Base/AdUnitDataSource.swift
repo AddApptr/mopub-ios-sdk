@@ -1,7 +1,7 @@
 //
 //  AdUnitDataSource.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -20,18 +20,13 @@ class AdUnitDataSource {
     internal var adUnits: [String: [AdUnit]]
     
     /**
-     Internally stored alphabetically sorted sections. This is seperated from the
-     public getter `sections` to allow overriding `sections`.
-     */
-    internal var cachedSections: [String]
-    
-    /**
      Data source sections as human readable text meant for display as section
      headings to the user.
      */
-    var sections: [String] {
-        return cachedSections
-    }
+    private(set) lazy var sections: [String] = {
+        // Ad unit sections sorted alphabetically
+        return adUnits.keys.sorted()
+    }()
     
     // MARK: - Initializers
     
@@ -44,12 +39,10 @@ class AdUnitDataSource {
     required init(plistName: String, bundle: Bundle) {
         guard plistName.count > 0 else {
             adUnits = [:]
-            cachedSections = []
             return
         }
         
         adUnits = AdUnitDataSource.openPlist(resourceName: plistName, bundle: bundle) ?? [:]
-        cachedSections = adUnits.keys.sorted()
     }
     
     // MARK: - Ad Unit Accessors
@@ -86,15 +79,6 @@ class AdUnitDataSource {
      */
     func reloadData() {
         // By default this does nothing, but may be overridden by subclasses.
-    }
-    
-    /**
-     Removes an item if supported.
-     */
-    @discardableResult
-    func removeItem(at indexPath: IndexPath) -> AdUnit? {
-        // By default this does nothing, but may be overridden by subclasses.
-        return nil
     }
 }
 

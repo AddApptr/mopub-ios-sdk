@@ -1,7 +1,7 @@
 //
 //  InterstitialAdDataSource.swift
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -27,31 +27,29 @@ class InterstitialAdDataSource: NSObject, AdDataSource {
     /**
      Table of which events were triggered.
      */
-    var eventTriggered: [AdEvent: Bool] = [:]
+    private var eventTriggered: [AdEvent: Bool] = [:]
+    
+    /**
+     Reason for load failure.
+     */
+    private var loadFailureReason: String? = nil
     
     /**
      Status event titles that correspond to the events found in `MPInterstitialAdControllerDelegate`
      */
-    lazy var title: [AdEvent: String] = {
+    private lazy var title: [AdEvent: String] = {
         var titleStrings: [AdEvent: String] = [:]
-        titleStrings[.didLoad]            = CallbackFunctionNames.interstitialDidLoadAd
-        titleStrings[.didFailToLoad]      = CallbackFunctionNames.interstitialDidFailToLoadAd
-        titleStrings[.willAppear]         = CallbackFunctionNames.interstitialWillAppear
-        titleStrings[.didAppear]          = CallbackFunctionNames.interstitialDidAppear
-        titleStrings[.willDisappear]      = CallbackFunctionNames.interstitialWillDisappear
-        titleStrings[.didDisappear]       = CallbackFunctionNames.interstitialDidDisappear
-        titleStrings[.didExpire]          = CallbackFunctionNames.interstitialDidExpire
-        titleStrings[.clicked]            = CallbackFunctionNames.interstitialDidReceiveTapEvent
-        titleStrings[.didTrackImpression] = CallbackFunctionNames.didTrackImpression
+        titleStrings[.didLoad]       = "interstitialDidLoadAd(_:)"
+        titleStrings[.didFailToLoad] = "interstitialDidFailToLoadAd(_:)"
+        titleStrings[.willAppear]    = "interstitialWillAppear(_:)"
+        titleStrings[.didAppear]     = "interstitialDidAppear(_:)"
+        titleStrings[.willDisappear] = "interstitialWillDisappear(_:)"
+        titleStrings[.didDisappear]  = "interstitialDidDisappear(_:)"
+        titleStrings[.didExpire]     = "interstitialDidExpire(_:)"
+        titleStrings[.clicked]       = "interstitialDidReceiveTapEvent(_:)"
         
         return titleStrings
     }()
-    
-    /**
-     Optional status messages that correspond to the events found in the ad's delegate protocol.
-     These are reset as part of `clearStatus`.
-     */
-    var messages: [AdEvent: String] = [:]
     
     // MARK: - Initialization
     
@@ -69,6 +67,20 @@ class InterstitialAdDataSource: NSObject, AdDataSource {
     }
     
     // MARK: - AdDataSource
+    
+    /**
+     The ad unit information sections available for the ad.
+     */
+    lazy var information: [AdInformation] = {
+        return [.id, .keywords, .userDataKeywords]
+    }()
+    
+    /**
+     The actions available for the ad.
+     */
+    lazy var actions: [AdAction] = {
+        return [.load, .show]
+    }()
     
     /**
      Closures associated with each available ad action.
@@ -90,7 +102,7 @@ class InterstitialAdDataSource: NSObject, AdDataSource {
      The status events available for the ad.
      */
     lazy var events: [AdEvent] = {
-        return [.didLoad, .didFailToLoad, .willAppear, .didAppear, .willDisappear, .didDisappear, .didExpire, .clicked, .didTrackImpression]
+        return [.didLoad, .didFailToLoad, .willAppear, .didAppear, .willDisappear, .didDisappear, .didExpire, .clicked]
     }()
     
     /**
@@ -106,30 +118,40 @@ class InterstitialAdDataSource: NSObject, AdDataSource {
     }
     
     /**
-     Queries if the data source has an ad loaded.
+     Retrieves the display status for the event.
+     - Parameter event: Status event.
+     - Returns: A tuple containing the status display title, optional message, and highlighted state.
      */
-    var isAdLoaded: Bool {
-        return interstitialAd.ready
+    func status(for event: AdEvent) -> (title: String, message: String?, isHighlighted: Bool) {
+        let message = (event == .didFailToLoad ? loadFailureReason : nil)
+        let isHighlighted = (eventTriggered[event] ?? false)
+        return (title: title[event] ?? "", message: message, isHighlighted: isHighlighted)
     }
     
     /**
-     Queries if the data source currently requesting an ad.
+     Sets the status for the event to highlighted. If the status is already highlighted,
+     nothing is done.
+     - Parameter event: Status event.
+     - Parameter complete: Completion closure.
      */
-    private(set) var isAdLoading: Bool = false
+    func setStatus(for event: AdEvent, complete:(() -> Swift.Void)) {
+        eventTriggered[event] = true
+        complete()
+    }
     
     /**
-    Optional ad size used for requesting inline ads. This should be `nil` for non-inline ads.
-    */
-    var requestedAdSize: CGSize? = nil
+     Clears the highlighted state for all status events.
+     - Parameter complete: Completion closure.
+     */
+    func clearStatus(complete:(() -> Swift.Void)) {
+        loadFailureReason = nil
+        eventTriggered = [:]
+        complete()
+    }
     
     // MARK: - Ad Loading
     
     private func loadAd() {
-        guard !isAdLoading else {
-            return
-        }
-        
-        isAdLoading = true
         clearStatus { [weak self] in
             self?.delegate?.adPresentationTableView.reloadData()
         }
@@ -155,17 +177,21 @@ extension InterstitialAdDataSource: MPInterstitialAdControllerDelegate {
     // MARK: - MPInterstitialAdControllerDelegate
     
     func interstitialDidLoadAd(_ interstitial: MPInterstitialAdController!) {
-        isAdLoading = false
         setStatus(for: .didLoad) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
+            if let strongSelf = self {
+                strongSelf.loadFailureReason = nil
+                strongSelf.delegate?.adPresentationTableView.reloadData()
+            }
         }
     }
     
     func interstitialDidFail(toLoadAd interstitial: MPInterstitialAdController!) {
-        isAdLoading = false
-        // The interstitial load failure doesn't give back an error reason; assume clear response
-        setStatus(for: .didFailToLoad, message: "No ad available") { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
+        setStatus(for: .didFailToLoad) { [weak self] in
+            if let strongSelf = self {
+                // The interstitial load failure doesn't give back an error reason; assume clear response
+                strongSelf.loadFailureReason = "No ad available"
+                strongSelf.delegate?.adPresentationTableView.reloadData()
+            }
         }
     }
     
@@ -201,13 +227,6 @@ extension InterstitialAdDataSource: MPInterstitialAdControllerDelegate {
     
     func interstitialDidReceiveTapEvent(_ interstitial: MPInterstitialAdController!) {
         setStatus(for: .clicked) { [weak self] in
-            self?.delegate?.adPresentationTableView.reloadData()
-        }
-    }
-    
-    func mopubAd(_ ad: MPMoPubAd, didTrackImpressionWith impressionData: MPImpressionData?) {
-        let message = impressionData?.description ?? "No impression data"
-        setStatus(for: .didTrackImpression, message: message) { [weak self] in
             self?.delegate?.adPresentationTableView.reloadData()
         }
     }

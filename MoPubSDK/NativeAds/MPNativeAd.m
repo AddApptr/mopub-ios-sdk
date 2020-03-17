@@ -1,13 +1,12 @@
 //
 //  MPNativeAd.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPNativeAd+Internal.h"
-#import "MoPub+Utility.h"
 #import "MPAdConfiguration.h"
 #import "MPCoreInstanceProvider.h"
 #import "MPNativeAdError.h"
@@ -21,18 +20,16 @@
 #import "MPNativeAdConstants.h"
 #import "MPTimer.h"
 #import "MPNativeAdRenderer.h"
+#import "MPNativeAdDelegate.h"
 #import "MPNativeView.h"
 #import "MPHTTPNetworkSession.h"
 #import "MPURLRequest.h"
-#import "MPImpressionTrackedNotification.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @interface MPNativeAd () <MPNativeAdAdapterDelegate, MPNativeViewDelegate>
 
 @property (nonatomic, readwrite, strong) id<MPNativeAdRenderer> renderer;
-@property (nonatomic, readwrite, strong) MPAdConfiguration *configuration;
-@property (nonatomic, readwrite, strong) NSString *adUnitID;
 
 @property (nonatomic, strong) NSDate *creationDate;
 
@@ -191,7 +188,7 @@
     } else {
         // If this method is called, that means that the backing adapter should implement -displayContentForURL:rootViewController:completion:.
         // If it doesn't, we'll log a warning.
-        MPLogInfo(@"Cannot display native ad content. -displayContentForURL:rootViewController:completion: not implemented by native ad adapter: %@", [self.adAdapter class]);
+        MPLogWarn(@"Cannot display native ad content. -displayContentForURL:rootViewController:completion: not implemented by native ad adapter: %@", [self.adAdapter class]);
     }
 }
 
@@ -230,13 +227,11 @@
 
 - (void)nativeAdDidClick:(id<MPNativeAdAdapter>)adAdapter
 {
-    MPLogAdEvent(MPLogEvent.adTapped, self.adIdentifier);
     [self trackClick];
 }
 
 - (void)nativeAdWillPresentModalForAdapter:(id<MPNativeAdAdapter>)adapter
 {
-    MPLogAdEvent(MPLogEvent.adWillPresentModal, self.adIdentifier);
     if ([self.delegate respondsToSelector:@selector(willPresentModalForNativeAd:)]) {
         [self.delegate willPresentModalForNativeAd:self];
     }
@@ -244,7 +239,6 @@
 
 - (void)nativeAdDidDismissModalForAdapter:(id<MPNativeAdAdapter>)adapter
 {
-    MPLogAdEvent(MPLogEvent.adDidDismissModal, self.adIdentifier);
     if ([self.delegate respondsToSelector:@selector(didDismissModalForNativeAd:)]) {
         [self.delegate didDismissModalForNativeAd:self];
     }
@@ -252,7 +246,6 @@
 
 - (void)nativeAdWillLeaveApplicationFromAdapter:(id<MPNativeAdAdapter>)adapter
 {
-    MPLogAdEvent(MPLogEvent.adWillLeaveApplication, self.adIdentifier);
     if ([self.delegate respondsToSelector:@selector(willLeaveApplicationFromNativeAd:)]) {
         [self.delegate willLeaveApplicationFromNativeAd:self];
     }

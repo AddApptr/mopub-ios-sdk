@@ -1,7 +1,7 @@
 //
 //  MPPrivateRewardedVideoCustomEventDelegateHandler.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -28,51 +28,51 @@
     return nil;
 }
 
-- (void)rewardedVideoDidLoadAdForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoDidLoadAdForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.didLoadAd != nil) { self.didLoadAd(); }
 }
 
-- (void)rewardedVideoDidFailToLoadAdForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent error:(NSError *)error {
+- (void)rewardedVideoDidFailToLoadAdForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent error:(NSError *)error {
     if (self.didFailToLoadAd != nil) { self.didFailToLoadAd(); }
 }
 
-- (void)rewardedVideoDidExpireForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoDidExpireForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.didExpireAd != nil) { self.didExpireAd(); }
 }
 
-- (void)rewardedVideoDidFailToPlayForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent error:(NSError *)error {
+- (void)rewardedVideoDidFailToPlayForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent error:(NSError *)error {
 
 }
 
-- (void)rewardedVideoWillAppearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoWillAppearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.willAppear != nil) { self.willAppear(); }
 }
 
-- (void)rewardedVideoDidAppearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoDidAppearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.didAppear != nil) { self.didAppear(); }
 }
 
-- (void)rewardedVideoWillDisappearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoWillDisappearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.willDisappear != nil) { self.willDisappear(); }
 }
 
-- (void)rewardedVideoDidDisappearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoDidDisappearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.didDisappear != nil) { self.didDisappear(); }
 }
 
-- (void)rewardedVideoWillLeaveApplicationForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoWillLeaveApplicationForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.willLeaveApp != nil) { self.willLeaveApp(); }
 }
 
-- (void)rewardedVideoDidReceiveTapEventForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (void)rewardedVideoDidReceiveTapEventForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     if (self.didReceiveTap != nil) { self.didReceiveTap(); }
 }
 
-- (void)rewardedVideoShouldRewardUserForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent reward:(MPRewardedVideoReward *)reward {
+- (void)rewardedVideoShouldRewardUserForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent reward:(MPRewardedVideoReward *)reward {
     if (self.shouldRewardUser != nil) { self.shouldRewardUser(); }
 }
 
-- (NSString *)customerIdForRewardedVideoCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent {
+- (NSString *)customerIdForRewardedVideoCustomEvent:(MPRewardedVideoCustomEvent *)customEvent {
     return nil;
 }
 
@@ -85,11 +85,11 @@
 }
 
 - (NSString *)adUnitId {
-    return _adUnitId;
+    return self.adUnitId;
 }
 
 - (MPAdConfiguration *)configuration {
-    return _adConfiguration;
+    return self.adConfiguration;
 }
 
 @end

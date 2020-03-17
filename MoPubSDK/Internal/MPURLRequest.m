@@ -1,16 +1,15 @@
 //
 //  MPURLRequest.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
+#import "MPURLRequest.h"
 #import "MPAPIEndpoints.h"
 #import "MPLogging.h"
 #import "MPURL.h"
-#import "MPURLRequest.h"
-#import "MPWebBrowserUserAgentInfo.h"
 
 // All requests have a 10 second timeout.
 const NSTimeInterval kRequestTimeoutInterval = 10.0;
@@ -32,7 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
             postData = mpUrl.postData;
         }
         else {
-            MPLogInfo(@"🚨 POST data failed to serialize into JSON:\n%@", mpUrl.postData);
+            MPLogFatal(@"POST Data is not serializable into JSON:\n%@", mpUrl.postData);
         }
     }
 
@@ -57,7 +56,7 @@ NS_ASSUME_NONNULL_BEGIN
     if (self = [super initWithURL:requestUrl]) {
         // Generate the request
         [self setHTTPShouldHandleCookies:NO];
-        [self setValue:MPWebBrowserUserAgentInfo.userAgent forHTTPHeaderField:@"User-Agent"];
+        [self setValue:MPURLRequest.userAgent forHTTPHeaderField:@"User-Agent"];
         [self setCachePolicy:NSURLRequestReloadIgnoringCacheData];
         [self setTimeoutInterval:kRequestTimeoutInterval];
 
@@ -78,7 +77,7 @@ NS_ASSUME_NONNULL_BEGIN
                 [self setHTTPBody:jsonData];
             }
             else {
-                MPLogEvent([MPLogEvent error:error message:nil]);
+                MPLogError(@"Could not generate JSON body from %@", postData);
             }
         }
     }
@@ -93,11 +92,44 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)description {
     if (self.HTTPBody != nil) {
         NSString * httpBody = [[NSString alloc] initWithData:self.HTTPBody encoding:NSUTF8StringEncoding];
-        return [NSString stringWithFormat:@"%@\n\t%@", self.URL, httpBody];
+        return [NSString stringWithFormat:@"%@\n%@", self.URL, httpBody];
     }
     else {
         return self.URL.absoluteString;
     }
+}
+
+/**
+ Global variable for holding the user agent string
+ */
+NSString * gUserAgent = nil;
+
+/**
+ Retrieves the current user agent as determined by @c UIWebView.
+ @returns The user agent.
+ */
++ (NSString *)userAgent {
+    if (gUserAgent == nil) {
+        // The user agent string cannot be obtained from a UIWebView unless on the
+        // main thread (there'll be a crash if you try to obtain on a thread other than main).
+        // Therefore, obtain the string on main thread and block this thread if needed to get it.
+
+        // Make a block to obtain the user agent string
+        void (^obtainUserAgentBlock)(void) = ^void(void) {
+            // Only set @c gUserAgent on the main thread to avoid undefined behavior.
+            gUserAgent = [[[UIWebView alloc] init] stringByEvaluatingJavaScriptFromString:@"navigator.userAgent"];
+        };
+
+        if ([NSThread isMainThread]) {
+            // Run the block directly if on main thread.
+            obtainUserAgentBlock();
+        } else {
+            // Block this thread to obtain user agent string on main thread.
+            dispatch_sync(dispatch_get_main_queue(), obtainUserAgentBlock);
+        }
+    }
+
+    return gUserAgent;
 }
 
 @end

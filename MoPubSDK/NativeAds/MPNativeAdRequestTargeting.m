@@ -1,7 +1,7 @@
 //
 //  MPNativeAdRequestTargeting.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -15,7 +15,7 @@
 
 + (MPNativeAdRequestTargeting *)targeting
 {
-    return [[MPNativeAdRequestTargeting alloc] initWithCreativeSafeSize:CGSizeZero];
+    return [[MPNativeAdRequestTargeting alloc] init];
 }
 
 - (void)setDesiredAssets:(NSSet *)desiredAssets
@@ -24,7 +24,6 @@
 
         NSMutableSet *allowedAdAssets = [NSMutableSet setWithObjects:kAdTitleKey,
                                          kAdTextKey,
-                                         kAdSponsoredByCompanyKey,
                                          kAdIconImageKey,
                                          kAdMainImageKey,
                                          kAdCTATextKey,

@@ -1,30 +1,19 @@
 //
 //  MPTimer.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import <Foundation/Foundation.h>
 
-NS_ASSUME_NONNULL_BEGIN
-
-/**
- * @c MPTimer is a thread safe @c NSTimer wrapper, with pause / resume functionality.
+/*
+ * MPTimer wraps an NSTimer and adds pause/resume functionality.
  */
 @interface MPTimer : NSObject
 
-/**
- * Return NO is the timer is paused, and return YES otherwise.
- */
-@property (nonatomic, readonly) BOOL isCountdownActive;
-
-+ (MPTimer *)timerWithTimeInterval:(NSTimeInterval)seconds
-                            target:(id)target
-                          selector:(SEL)aSelector
-                           repeats:(BOOL)repeats
-                       runLoopMode:(NSString *)runLoopMode;
+@property (nonatomic, copy) NSString *runLoopMode;
 
 + (MPTimer *)timerWithTimeInterval:(NSTimeInterval)seconds
                             target:(id)target
@@ -33,10 +22,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)isValid;
 - (void)invalidate;
-- (void)scheduleNow;
-- (void)pause;
-- (void)resume;
+- (BOOL)isScheduled;
+- (BOOL)scheduleNow;
+- (BOOL)pause;
+- (BOOL)resume;
+- (NSTimeInterval)initialTimeInterval;
 
 @end
-
-NS_ASSUME_NONNULL_END

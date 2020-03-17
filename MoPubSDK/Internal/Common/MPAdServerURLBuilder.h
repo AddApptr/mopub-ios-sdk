@@ -1,24 +1,17 @@
 //
 //  MPAdServerURLBuilder.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import <Foundation/Foundation.h>
-#import "MPAdTargeting.h"
-#import "MPEngineInfo.h"
 #import "MPURL.h"
 
 @class CLLocation;
 
 @interface MPAdServerURLBuilder : NSObject
-
-/**
- Stores the information of the engine used to render the MoPub SDK.
- */
-@property (class, nonatomic, strong) MPEngineInfo * engineInformation;
 
 /**
  * Returns an NSURL object given an endpoint and a dictionary of query parameters/values
@@ -30,15 +23,21 @@
 @interface MPAdServerURLBuilder (Ad)
 
 + (MPURL *)URLWithAdUnitID:(NSString *)adUnitID
-                 targeting:(MPAdTargeting *)targeting;
+                  keywords:(NSString *)keywords
+          userDataKeywords:(NSString *)userDataKeywords
+                  location:(CLLocation *)location;
 
 + (MPURL *)URLWithAdUnitID:(NSString *)adUnitID
-                 targeting:(MPAdTargeting *)targeting
+                  keywords:(NSString *)keywords
+          userDataKeywords:(NSString *)userDataKeywords
+                  location:(CLLocation *)location
              desiredAssets:(NSArray *)assets
                viewability:(BOOL)viewability;
 
 + (MPURL *)URLWithAdUnitID:(NSString *)adUnitID
-                 targeting:(MPAdTargeting *)targeting
+                  keywords:(NSString *)keywords
+          userDataKeywords:(NSString *)userDataKeywords
+                  location:(CLLocation *)location
              desiredAssets:(NSArray *)assets
                 adSequence:(NSInteger)adSequence
                viewability:(BOOL)viewability;

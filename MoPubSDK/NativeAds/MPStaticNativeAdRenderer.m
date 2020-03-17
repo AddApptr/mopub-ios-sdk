@@ -1,13 +1,12 @@
 //
 //  MPStaticNativeAdRenderer.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import "MPAdDestinationDisplayAgent.h"
-#import "MPBaseNativeAdRenderer+Internal.h"
 #import "MPHTTPNetworkSession.h"
 #import "MPLogging.h"
 #import "MPMemoryCache.h"
@@ -18,6 +17,7 @@
 #import "MPNativeAdRendererConfiguration.h"
 #import "MPNativeAdRendererConstants.h"
 #import "MPNativeAdRendererImageHandler.h"
+#import "MPNativeAdRendering.h"
 #import "MPNativeAdRenderingImageLoader.h"
 #import "MPNativeCache.h"
 #import "MPNativeView.h"
@@ -35,8 +35,10 @@ const CGFloat MPNativeViewDynamicDimension = -1.0;
 
 @interface MPStaticNativeAdRenderer () <MPNativeAdRendererImageHandlerDelegate>
 
+@property (nonatomic) UIView<MPNativeAdRendering> *adView;
 @property (nonatomic) id<MPNativeAdAdapter> adapter;
 @property (nonatomic) BOOL adViewInViewHierarchy;
+@property (nonatomic) Class renderingViewClass;
 @property (nonatomic) MPNativeAdRendererImageHandler *rendererImageHandler;
 
 @end
@@ -45,16 +47,10 @@ const CGFloat MPNativeViewDynamicDimension = -1.0;
 
 + (MPNativeAdRendererConfiguration *)rendererConfigurationWithRendererSettings:(id<MPNativeAdRendererSettings>)rendererSettings
 {
-    return [MPStaticNativeAdRenderer rendererConfigurationWithRendererSettings:rendererSettings additionalSupportedCustomEvents:@[]];
-}
-
-+ (MPNativeAdRendererConfiguration *)rendererConfigurationWithRendererSettings:(id<MPNativeAdRendererSettings>)rendererSettings
-                                               additionalSupportedCustomEvents:(NSArray *)additionalSupportedCustomEvents
-{
     MPNativeAdRendererConfiguration *config = [[MPNativeAdRendererConfiguration alloc] init];
     config.rendererClass = [self class];
     config.rendererSettings = rendererSettings;
-    config.supportedCustomEvents = [@[@"MPMoPubNativeCustomEvent"] arrayByAddingObjectsFromArray:additionalSupportedCustomEvents];
+    config.supportedCustomEvents = @[@"MPMoPubNativeCustomEvent", @"FacebookNativeCustomEvent", @"MillennialNativeCustomEvent"];
 
     return config;
 }
@@ -63,7 +59,7 @@ const CGFloat MPNativeViewDynamicDimension = -1.0;
 {
     if (self = [super init]) {
         MPStaticNativeAdRendererSettings *settings = (MPStaticNativeAdRendererSettings *)rendererSettings;
-        self.renderingViewClass = settings.renderingViewClass;
+        _renderingViewClass = settings.renderingViewClass;
         _viewSizeHandler = [settings.viewSizeHandler copy];
         _rendererImageHandler = [MPNativeAdRendererImageHandler new];
         _rendererImageHandler.delegate = self;
@@ -96,22 +92,20 @@ const CGFloat MPNativeViewDynamicDimension = -1.0;
     // so we don't unnecessarily load images from the cache if the user is scrolling fast. So we will
     // just store the image URLs for now.
     if ([self.adView respondsToSelector:@selector(nativeMainTextLabel)]) {
-        self.adView.nativeMainTextLabel.text = adapter.properties[kAdTextKey];
+        self.adView.nativeMainTextLabel.text = [adapter.properties objectForKey:kAdTextKey];
     }
 
     if ([self.adView respondsToSelector:@selector(nativeTitleTextLabel)]) {
-        self.adView.nativeTitleTextLabel.text = adapter.properties[kAdTitleKey];
+        self.adView.nativeTitleTextLabel.text = [adapter.properties objectForKey:kAdTitleKey];
     }
 
-    if ([self.adView respondsToSelector:@selector(nativeCallToActionTextLabel)]) {
-        self.adView.nativeCallToActionTextLabel.text = adapter.properties[kAdCTATextKey];
+    if ([self.adView respondsToSelector:@selector(nativeCallToActionTextLabel)] && self.adView.nativeCallToActionTextLabel) {
+        self.adView.nativeCallToActionTextLabel.text = [adapter.properties objectForKey:kAdCTATextKey];
     }
-
-    [self renderSponsoredByTextWithAdapter:adapter];
 
     if ([self.adView respondsToSelector:@selector(nativePrivacyInformationIconImageView)]) {
-        UIImage *privacyIconImage = adapter.properties[kAdPrivacyIconUIImageKey];
-        NSString *privacyIconImageUrl = adapter.properties[kAdPrivacyIconImageUrlKey];
+        UIImage *privacyIconImage = [adapter.properties objectForKey:kAdPrivacyIconUIImageKey];
+        NSString *privacyIconImageUrl = [adapter.properties objectForKey:kAdPrivacyIconImageUrlKey];
         // A cached privacy information icon image exists; it should be used.
         if (privacyIconImage != nil) {
             UIImageView *imageView = self.adView.nativePrivacyInformationIconImageView;
@@ -189,7 +183,7 @@ const CGFloat MPNativeViewDynamicDimension = -1.0;
 
     // See if the ad contains a star rating and notify the view if it does.
     if ([self.adView respondsToSelector:@selector(layoutStarRating:)]) {
-        NSNumber *starRatingNum = adapter.properties[kAdStarRatingKey];
+        NSNumber *starRatingNum = [adapter.properties objectForKey:kAdStarRatingKey];
 
         if ([starRatingNum isKindOfClass:[NSNumber class]] && starRatingNum.floatValue >= kStarRatingMinValue && starRatingNum.floatValue <= kStarRatingMaxValue) {
             [self.adView layoutStarRating:starRatingNum];
@@ -226,14 +220,14 @@ const CGFloat MPNativeViewDynamicDimension = -1.0;
 
     if (superview) {
         // Only handle the loading of the icon image if the adapter doesn't already have a view for it.
-        if (![self hasIconView] && self.adapter.properties[kAdIconImageKey] && [self.adView respondsToSelector:@selector(nativeIconImageView)]) {
-            [self.rendererImageHandler loadImageForURL:[NSURL URLWithString:self.adapter.properties[kAdIconImageKey]] intoImageView:self.adView.nativeIconImageView];
+        if (![self hasIconView] && [self.adapter.properties objectForKey:kAdIconImageKey] && [self.adView respondsToSelector:@selector(nativeIconImageView)]) {
+            [self.rendererImageHandler loadImageForURL:[NSURL URLWithString:[self.adapter.properties objectForKey:kAdIconImageKey]] intoImageView:self.adView.nativeIconImageView];
         }
 
         // Only handle the loading of the main image if the adapter doesn't already have a view for it.
         if (!([self.adapter respondsToSelector:@selector(mainMediaView)] && [self.adapter mainMediaView])) {
-            if (self.adapter.properties[kAdMainImageKey] && [self.adView respondsToSelector:@selector(nativeMainImageView)]) {
-                [self.rendererImageHandler loadImageForURL:[NSURL URLWithString:self.adapter.properties[kAdMainImageKey]] intoImageView:self.adView.nativeMainImageView];
+            if ([self.adapter.properties objectForKey:kAdMainImageKey] && [self.adView respondsToSelector:@selector(nativeMainImageView)]) {
+                [self.rendererImageHandler loadImageForURL:[NSURL URLWithString:[self.adapter.properties objectForKey:kAdMainImageKey]] intoImageView:self.adView.nativeMainImageView];
             }
         }
 

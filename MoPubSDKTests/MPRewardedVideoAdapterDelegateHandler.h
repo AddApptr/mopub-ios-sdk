@@ -1,7 +1,7 @@
 //
 //  MPRewardedVideoAdapterDelegateHandler.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -26,7 +26,6 @@ typedef id<MPMediationSettingsProtocol> (^MPRewardedVideoAdapterDelegateHandlerI
 @property (nonatomic, copy) MPRewardedVideoAdapterDelegateHandlerBlock rewardedVideoWillDisappear;
 @property (nonatomic, copy) MPRewardedVideoAdapterDelegateHandlerBlock rewardedVideoDidDisappear;
 @property (nonatomic, copy) MPRewardedVideoAdapterDelegateHandlerBlock rewardedVideoDidReceiveTapEvent;
-@property (nonatomic, copy) MPRewardedVideoAdapterDelegateHandlerBlock rewardedVideoDidReceiveImpressionEvent;
 @property (nonatomic, copy) MPRewardedVideoAdapterDelegateHandlerBlock rewardedVideoWillLeaveApplication;
 @property (nonatomic, copy) MPRewardedVideoAdapterDelegateHandlerRewardBlock rewardedVideoShouldRewardUser;
 

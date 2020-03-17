@@ -1,7 +1,7 @@
 //
 //  MPBaseInterstitialAdapter.m
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -25,6 +25,10 @@
 @end
 
 @implementation MPBaseInterstitialAdapter
+
+@synthesize delegate = _delegate;
+@synthesize configuration = _configuration;
+@synthesize timeoutTimer = _timeoutTimer;
 
 - (id)initWithDelegate:(id<MPInterstitialAdapterDelegate>)delegate
 {
@@ -68,10 +72,11 @@
             self.configuration.adTimeoutInterval : INTERSTITIAL_TIMEOUT_INTERVAL;
 
     if (timeInterval > 0) {
-        self.timeoutTimer = [MPTimer timerWithTimeInterval:timeInterval
-                                                    target:self
-                                                  selector:@selector(timeout)
-                                                   repeats:NO];
+        self.timeoutTimer = [[MPCoreInstanceProvider sharedProvider] buildMPTimerWithTimeInterval:timeInterval
+                                                                                       target:self
+                                                                                     selector:@selector(timeout)
+                                                                                      repeats:NO];
+
         [self.timeoutTimer scheduleNow];
     }
 }
@@ -83,7 +88,7 @@
 
 - (void)timeout
 {
-    NSError * error = [NSError errorWithCode:MOPUBErrorAdRequestTimedOut localizedDescription:@"Interstitial ad request timed out"];
+    NSError * error = [MOPUBError errorWithCode:MOPUBErrorAdRequestTimedOut localizedDescription:@"Interstitial ad request timed out"];
     [self.delegate adapter:self didFailToLoadAdWithError:error];
     self.delegate = nil;
 }
@@ -100,7 +105,6 @@
 - (void)trackImpression
 {
     [[MPAnalyticsTracker sharedTracker] trackImpressionForConfiguration:self.configuration];
-    [self.delegate interstitialDidReceiveImpressionEventForAdapter:self];
 }
 
 - (void)trackClick

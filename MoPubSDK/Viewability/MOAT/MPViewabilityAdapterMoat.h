@@ -1,7 +1,7 @@
 //
 //  MPViewabilityAdapterMoat.h
 //
-//  Copyright 2018-2020 Twitter, Inc.
+//  Copyright 2018 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -15,6 +15,12 @@
 #import "MPViewabilityAdapter.h"
 #endif
 
-__attribute__((weak_import))
-@interface MPViewabilityAdapterMoat : NSObject <MPViewabilityAdapterForWebView>
+__attribute__((weak_import)) @interface MPViewabilityAdapterMoat : NSObject <MPViewabilityAdapter>
+@property (nonatomic, readonly) BOOL isTracking;
+
+- (instancetype)initWithAdView:(UIView *)webView isVideo:(BOOL)isVideo startTrackingImmediately:(BOOL)startTracking;
+- (void)startTracking;
+- (void)stopTracking;
+- (void)registerFriendlyObstructionView:(UIView *)view;
+
 @end
