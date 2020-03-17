@@ -1,7 +1,7 @@
 //
 //  MoPub.h
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -9,65 +9,46 @@
 #import "MPConstants.h"
 
 #import "MOPUBDisplayAgentType.h"
+#import "MPAdapterConfiguration.h"
 #import "MPAdConversionTracker.h"
 #import "MPAdImpressionTimer.h"
 #import "MPAdTargeting.h"
-#import "MPAdvancedBidder.h"
 #import "MPAdView.h"
+#import "MPAdViewDelegate.h"
 #import "MPBannerCustomEvent.h"
 #import "MPBannerCustomEventDelegate.h"
+#import "MPBaseAdapterConfiguration.h"
 #import "MPBool.h"
 #import "MPConsentChangedNotification.h"
+#import "MPConsentChangedReason.h"
 #import "MPConsentError.h"
 #import "MPConsentStatus.h"
+#import "MPEngineInfo.h"
 #import "MPError.h"
 #import "MPGlobal.h"
 #import "MPIdentityProvider.h"
+#import "MPImpressionData.h"
+#import "MPImpressionTrackedNotification.h"
 #import "MPInterstitialAdController.h"
+#import "MPInterstitialAdControllerDelegate.h"
 #import "MPInterstitialCustomEvent.h"
 #import "MPInterstitialCustomEventDelegate.h"
 #import "MPLogging.h"
-#import "MPLogLevel.h"
-#import "MPLogProvider.h"
-#import "MPMediationSdkInitializable.h"
+#import "MPBLogLevel.h"
 #import "MPMediationSettingsProtocol.h"
+#import "MPMoPubAd.h"
+#import "MPMoPubAdPlacer.h"
 #import "MPMoPubConfiguration.h"
 #import "MPRealTimeTimer.h"
 #import "MPRewardedVideo.h"
 #import "MPRewardedVideoReward.h"
 #import "MPRewardedVideoCustomEvent.h"
-#import "MPRewardedVideoCustomEvent+Caching.h"
 #import "MPRewardedVideoError.h"
 #import "MPViewabilityAdapter.h"
 #import "MPViewabilityOption.h"
 
-#if MP_HAS_NATIVE_PACKAGE
-#import "MPNativeAd.h"
-#import "MPNativeAdAdapter.h"
-#import "MPNativeAdConstants.h"
-#import "MPNativeCustomEvent.h"
-#import "MPNativeCustomEventDelegate.h"
-#import "MPNativeAdError.h"
-#import "MPNativeAdRendering.h"
-#import "MPNativeAdRequest.h"
-#import "MPNativeAdRequestTargeting.h"
-#import "MPNativeView.h"
-#import "MPNativeAdUtils.h"
-#import "MPCollectionViewAdPlacer.h"
-#import "MPTableViewAdPlacer.h"
-#import "MPClientAdPositioning.h"
-#import "MPServerAdPositioning.h"
-#import "MPNativeAdDelegate.h"
-#import "MPStaticNativeAdRendererSettings.h"
-#import "MPNativeAdRendererConfiguration.h"
-#import "MPNativeAdRendererSettings.h"
-#import "MPNativeAdRenderer.h"
-#import "MPStaticNativeAdRenderer.h"
-#import "MPNativeAdRendererImageHandler.h"
-#import "MOPUBNativeVideoAdRendererSettings.h"
-#import "MOPUBNativeVideoAdRenderer.h"
-#import "MPNativeAdRenderingImageLoader.h"
-#import "MPStreamAdPlacer.h"
+#if __has_include("MPNativeAds.h")
+    #import "MPNativeAds.h"
 #endif
 
 // Import these frameworks for module support.
@@ -126,20 +107,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) BOOL frequencyCappingIdUsageEnabled;
 
 /**
- * Forces the usage of WKWebView (if able).
+ * Forces the usage of @c WKWebView.
+ *
+ * Deprecated: @c WKWebView is always used. No need to force it any more. Calling this method will have no effect.
  */
-@property (nonatomic, assign) BOOL forceWKWebView;
+@property (nonatomic, assign) BOOL forceWKWebView __attribute((deprecated("WKWebView is always used. No need to force it any more.")));
 
 /**
- * SDK log level. The default value is `MPLogLevelInfo`.
+ * SDK log level. The default value is `MPBLogLevelNone`.
  */
-@property (nonatomic, assign) MPLogLevel logLevel;
-
-/**
- * A boolean value indicating whether advanced bidding is enabled. This boolean defaults to `YES`.
- * To disable advanced bidding, set this value to `NO`.
- */
-@property (nonatomic, assign) BOOL enableAdvancedBidding;
+@property (nonatomic, assign) MPBLogLevel logLevel __attribute((deprecated("Use the MPMoPubConfiguration.loggingLevel instead.")));
 
 /**
  * Initializes the MoPub SDK asynchronously on a background thread.
@@ -185,14 +162,27 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)disableViewability:(MPViewabilityOption)vendors;
 
+/**
+ Sets the engine that is using this MoPub SDK.
+ @param info Engine information.
+ */
+- (void)setEngineInformation:(MPEngineInfo *)info;
+
 @end
 
 @interface MoPub (Mediation)
+
 /**
- * Retrieves all currently cached mediated networks.
- * @return A list of all cached networks or @c nil.
+ * Retrieves the adapter configuration for the specified class.
+ * @param className The classname of the adapter configuration instance to retrieve.
+ * @return The adapter configuration if available; otherwise @c nil.
  */
-- (NSArray<Class<MPMediationSdkInitializable>> * _Nullable)allCachedNetworks;
+- (id<MPAdapterConfiguration> _Nullable)adapterConfigurationNamed:(NSString *)className;
+
+/**
+ Retrieves the available adapter configuration class names.
+ */
+- (NSArray<NSString *> * _Nullable)availableAdapterClassNames;
 
 /**
  * Clears all currently cached mediated networks.
@@ -235,6 +225,11 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Consent Acquisition
  */
+
+/**
+ This API can be used if you want to allow supported SDK networks to collect user information on the basis of legitimate interest. The default value is @c NO.
+ */
+@property (nonatomic, assign) BOOL allowLegitimateInterest;
 
 /**
  * `YES` if a consent dialog is presently loaded and ready to be shown; `NO` otherwise

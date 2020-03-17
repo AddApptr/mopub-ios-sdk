@@ -1,7 +1,7 @@
 //
 //  MPNativeAdRequest.m
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -27,6 +27,7 @@
 #import "MPMoPubNativeCustomEvent.h"
 #import "MPNativeAdRendererConfiguration.h"
 #import "NSMutableArray+MPAdditions.h"
+#import "MPStopwatch.h"
 #import "MPTimer.h"
 #import "MPError.h"
 #import "NSDate+MPAdditions.h"
@@ -38,7 +39,7 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
 @interface MPNativeAdRequest () <MPNativeCustomEventDelegate, MPAdServerCommunicatorDelegate>
 
-@property (nonatomic, copy) NSString *adUnitIdentifier;
+@property (nonatomic, copy) NSString *adUnitId;
 @property (nonatomic) NSArray *rendererConfigurations;
 @property (nonatomic, strong) NSURL *URL;
 @property (nonatomic, strong) MPAdServerCommunicator *communicator;
@@ -49,7 +50,8 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 @property (nonatomic) id<MPNativeAdRenderer> customEventRenderer;
 @property (nonatomic, assign) BOOL loading;
 @property (nonatomic, strong) MPTimer *timeoutTimer;
-@property (nonatomic, assign) NSTimeInterval adapterLoadStartTimestamp;
+@property (nonatomic, strong) MPStopwatch *loadStopwatch;
+@property (nonatomic, strong) NSURL *mostRecentlyLoadedURL;  // ADF-4286: avoid infinite ad reloads
 
 @end
 
@@ -59,9 +61,10 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 {
     self = [super init];
     if (self) {
-        _adUnitIdentifier = [identifier copy];
+        _adUnitId = [identifier copy];
         _communicator = [[MPAdServerCommunicator alloc] initWithDelegate:self];
         _rendererConfigurations = rendererConfigurations;
+        _loadStopwatch = MPStopwatch.new;
     }
     return self;
 }
@@ -83,10 +86,8 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 - (void)startWithCompletionHandler:(MPNativeAdRequestHandler)handler
 {
     if (handler) {
-        self.URL = [MPAdServerURLBuilder URLWithAdUnitID:self.adUnitIdentifier
-                                                keywords:self.targeting.keywords
-                                        userDataKeywords:self.targeting.userDataKeywords
-                                                location:self.targeting.location
+        self.URL = [MPAdServerURLBuilder URLWithAdUnitID:self.adUnitId
+                                               targeting:self.targeting
                                            desiredAssets:[self.targeting.desiredAssets allObjects]
                                              viewability:NO];
 
@@ -94,17 +95,15 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
         [self loadAdWithURL:self.URL];
     } else {
-        MPLogWarn(@"Native Ad Request did not start - requires completion handler block.");
+        MPLogInfo(@"Native Ad Request did not start - requires completion handler block.");
     }
 }
 
 - (void)startForAdSequence:(NSInteger)adSequence withCompletionHandler:(MPNativeAdRequestHandler)handler
 {
     if (handler) {
-        self.URL = [MPAdServerURLBuilder URLWithAdUnitID:self.adUnitIdentifier
-                                                keywords:self.targeting.keywords
-                                        userDataKeywords:self.targeting.userDataKeywords
-                                                location:self.targeting.location
+        self.URL = [MPAdServerURLBuilder URLWithAdUnitID:self.adUnitId
+                                               targeting:self.targeting
                                            desiredAssets:[self.targeting.desiredAssets allObjects]
                                               adSequence:adSequence
                                              viewability:NO];
@@ -113,7 +112,7 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
         [self loadAdWithURL:self.URL];
     } else {
-        MPLogWarn(@"Native Ad Request did not start - requires completion handler block.");
+        MPLogInfo(@"Native Ad Request did not start - requires completion handler block.");
     }
 }
 
@@ -135,12 +134,15 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
 - (void)loadAdWithURL:(NSURL *)URL
 {
+    MPLogAdEvent(MPLogEvent.adLoadAttempt, self.adUnitId);
+
     if (self.loading) {
-        MPLogWarn(@"Native ad request is already loading an ad. Wait for previous load to finish.");
+        MPLogInfo(@"Native ad request is already loading an ad. Wait for previous load to finish.");
         return;
     }
 
     self.loading = YES;
+    self.mostRecentlyLoadedURL = URL;
     [self.communicator loadURL:URL];
 }
 
@@ -173,6 +175,12 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
                                                                                    impressionMinVisibleSeconds:configuration.nativeImpressionMinVisibleTimeInterval];
         }
 
+        // Additional information to be passed to the MoPub native custom events
+        // for the purposes of logging.
+        classData[kNativeAdUnitId] = self.adUnitId;
+        classData[kNativeAdDspName] = nil; // Placeholder for future feature
+        classData[kNativeAdDspCreativeId] = configuration.dspCreativeId;
+
         configuration.customEventClassData = classData;
     }
 
@@ -191,8 +199,8 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
     if (customEventRendererConfig == nil) {
         NSString * noRendererErrorMessage = [NSString stringWithFormat:@"Could not find renderer configuration for custom event class: %@", NSStringFromClass(configuration.customEventClass)];
-        NSError * noRendererError = [MOPUBError errorWithCode:MOPUBErrorNoRenderer localizedDescription:noRendererErrorMessage];
-        MPLogError(noRendererErrorMessage);
+        NSError * noRendererError = [NSError errorWithCode:MOPUBErrorNoRenderer localizedDescription:noRendererErrorMessage];
+        MPLogEvent([MPLogEvent error:noRendererError message:nil]);
 
         [self nativeCustomEvent:nil didFailToLoadAdWithError:noRendererError];
         return;
@@ -203,8 +211,8 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
     MPNativeCustomEvent *customEvent = [[configuration.customEventClass alloc] init];
     if (![customEvent isKindOfClass:[MPNativeCustomEvent class]]) {
         NSString * invalidCustomEventErrorMessage = [NSString stringWithFormat:@"Custom Event Class: %@ does not extend MPNativeCustomEvent", NSStringFromClass(configuration.customEventClass)];
-        NSError * invalidCustomEventError = [MOPUBError errorWithCode:MOPUBErrorNoRenderer localizedDescription:invalidCustomEventErrorMessage];
-        MPLogError(invalidCustomEventErrorMessage);
+        NSError * invalidCustomEventError = [NSError errorWithCode:MOPUBErrorNoRenderer localizedDescription:invalidCustomEventErrorMessage];
+        MPLogEvent([MPLogEvent error:invalidCustomEventError message:nil]);
 
         [self nativeCustomEvent:nil didFailToLoadAdWithError:invalidCustomEventError];
         return;
@@ -234,15 +242,17 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
     self.remainingConfigurations = nil;
 
     adObject.renderer = self.customEventRenderer;
+    adObject.configuration = self.adConfiguration;
+    adObject.adUnitID = self.adUnitId;
 
     if ([(id)adObject.adAdapter respondsToSelector:@selector(setAdConfiguration:)]) {
         [(id)adObject.adAdapter performSelector:@selector(setAdConfiguration:) withObject:self.adConfiguration];
     }
 
-    if (!error) {
-        MPLogInfo(@"Successfully loaded native ad.");
+    if (error == nil) {
+        MPLogAdEvent(MPLogEvent.adDidLoad, self.adUnitId);
     } else {
-        MPLogError(@"Native ad failed to load with error: %@", error);
+        MPLogAdEvent([MPLogEvent adFailedToLoadWithError:error], self.adUnitId);
     }
 
     if (self.completionHandler) {
@@ -253,13 +263,13 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
 - (void)fetchAdWithConfiguration:(MPAdConfiguration *)configuration {
     if (configuration.adUnitWarmingUp) {
-        MPLogInfo(kMPWarmingUpErrorLogFormatWithAdUnitID, self.adUnitIdentifier);
+        MPLogInfo(kMPWarmingUpErrorLogFormatWithAdUnitID, self.adUnitId);
         [self completeAdRequestWithAdObject:nil error:MPNativeAdNSErrorForAdUnitWarmingUp()];
         return;
     }
 
-    if ([configuration.networkType isEqualToString:kAdTypeClear]) {
-        MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.adUnitIdentifier);
+    if ([configuration.adType isEqualToString:kAdTypeClear]) {
+        MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.adUnitId);
         [self completeAdRequestWithAdObject:nil error:MPNativeAdNSErrorForNoInventory()];
         return;
     }
@@ -269,8 +279,8 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
     // Notify Ad Server of the adapter load. This is fire and forget.
     [self.communicator sendBeforeLoadUrlWithConfiguration:configuration];
 
-    // Record the start time of the adapter load.
-    self.adapterLoadStartTimestamp = NSDate.now.timeIntervalSince1970;
+    // Start the stopwatch for the adapter load.
+    [self.loadStopwatch start];
 
     [self getAdWithConfiguration:self.adConfiguration];
 }
@@ -284,7 +294,7 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 
     // There are no configurations to try. Consider this a clear response by the server.
     if (self.remainingConfigurations.count == 0 && self.adConfiguration == nil) {
-        MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.adUnitIdentifier);
+        MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.adUnitId);
         [self completeAdRequestWithAdObject:nil error:MPNativeAdNSErrorForNoInventory()];
         return;
     }
@@ -299,12 +309,16 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
     [self completeAdRequestWithAdObject:nil error:MPNativeAdNSErrorForNetworkConnectionError()];
 }
 
+- (BOOL)isFullscreenAd {
+    return NO;
+}
+
 #pragma mark - <MPNativeCustomEventDelegate>
 
 - (void)nativeCustomEvent:(MPNativeCustomEvent *)event didLoadAd:(MPNativeAd *)adObject
 {
     // Record the end of the adapter load and send off the fire and forget after-load-url tracker.
-    NSTimeInterval duration = NSDate.now.timeIntervalSince1970 - self.adapterLoadStartTimestamp;
+    NSTimeInterval duration = [self.loadStopwatch stop];
     [self.communicator sendAfterLoadUrlWithConfiguration:self.adConfiguration adapterLoadDuration:duration adapterLoadResult:MPAfterLoadResultAdLoaded];
 
     // Add the click tracker url from the header to our set.
@@ -330,7 +344,7 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
 {
     // Record the end of the adapter load and send off the fire and forget after-load-url tracker
     // with the appropriate error code result.
-    NSTimeInterval duration = NSDate.now.timeIntervalSince1970 - self.adapterLoadStartTimestamp;
+    NSTimeInterval duration = [self.loadStopwatch stop];
     MPAfterLoadResult result = (error.isAdRequestTimedOutError ? MPAfterLoadResultTimeout : (event == nil ? MPAfterLoadResultMissingAdapter : MPAfterLoadResultError));
     [self.communicator sendAfterLoadUrlWithConfiguration:self.adConfiguration adapterLoadDuration:duration adapterLoadResult:result];
 
@@ -340,7 +354,8 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
         [self fetchAdWithConfiguration:self.adConfiguration];
     }
     // No more configurations to try. Fail over and let Ad Server get more ads
-    else if (self.adConfiguration.nextURL != nil) {
+    else if (self.adConfiguration.nextURL != nil
+             && [self.adConfiguration.nextURL isEqual:self.mostRecentlyLoadedURL] == false) {
         self.loading = NO;
         [self loadAdWithURL:self.adConfiguration.nextURL];
     }
@@ -348,7 +363,7 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
     else {
         self.loading = NO;
 
-        MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.adUnitIdentifier);
+        MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.adUnitId);
         [self completeAdRequestWithAdObject:nil error:MPNativeAdNSErrorForNoInventory()];
     }
 }
@@ -358,18 +373,17 @@ static NSString * const kNativeAdErrorDomain = @"com.mopub.NativeAd";
     NSTimeInterval timeInterval = (self.adConfiguration && self.adConfiguration.adTimeoutInterval >= 0) ? self.adConfiguration.adTimeoutInterval : NATIVE_TIMEOUT_INTERVAL;
 
     if (timeInterval > 0) {
-        self.timeoutTimer = [[MPCoreInstanceProvider sharedProvider] buildMPTimerWithTimeInterval:timeInterval
-                                                                                           target:self
-                                                                                         selector:@selector(timeout)
-                                                                                          repeats:NO];
-
+        self.timeoutTimer = [MPTimer timerWithTimeInterval:timeInterval
+                                                    target:self
+                                                  selector:@selector(timeout)
+                                                   repeats:NO];
         [self.timeoutTimer scheduleNow];
     }
 }
 
 - (void)timeout
 {
-    NSError * error = [MOPUBError errorWithCode:MOPUBErrorAdRequestTimedOut localizedDescription:@"Native ad request timed out"];
+    NSError * error = [NSError errorWithCode:MOPUBErrorAdRequestTimedOut localizedDescription:@"Native ad request timed out"];
     [self nativeCustomEvent:self.nativeCustomEvent didFailToLoadAdWithError:error];
 }
 

@@ -1,14 +1,14 @@
 //
 //  MPClosableView.h
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import <UIKit/UIKit.h>
 
-@class MPWebView;
+extern const CGSize kCloseRegionSize;
 
 enum {
     MPClosableViewCloseButtonLocationTopRight,
@@ -48,7 +48,7 @@ CGRect MPClosableViewCustomCloseButtonFrame(CGSize size, MPClosableViewCloseButt
 @property (nonatomic, strong, readonly) UIButton *closeButton;
 
 - (instancetype)initWithFrame:(CGRect)frame
-                      webView:(MPWebView *)webView
+                  contentView:(UIView *)contentView
                      delegate:(id<MPClosableViewDelegate>)delegate;
 
 @end

@@ -1,14 +1,13 @@
 //
 //  MPRewardedVideoCustomEvent.h
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import "MPMediationSdkInitializable.h"
 
 @protocol MPRewardedVideoCustomEventDelegate;
 @protocol MPMediationSettingsProtocol;
@@ -20,15 +19,18 @@
  * responsible for instantiating and manipulating objects in the third party SDK and translating
  * and communicating events from those objects back to the MoPub SDK by notifying a delegate.
  *
- * `MPRewardedVideoCustomEvent` is a base class for custom events that support full-screen rewarded video ads.
- * By implementing subclasses of `MPRewardedVideoCustomEvent` you can enable the MoPub SDK to
- * natively support a wide variety of third-party ad networks.
+ * @c MPRewardedVideoCustomEvent is a base class for custom events that support full-screen rewarded
+ * video ads, and it conforms to a protocol of the same name @c MPRewardedVideoCustomEvent.
+ * By implementing subclasses of @c MPRewardedVideoCustomEvent you can enable the MoPub SDK to
+ * natively support a wide variety of third-party ad networks. By conforming to @c MPRewardedVideoCustomEvent,
+ * other custom event classes for regular interstitial and VAST video can conform to the same set of
+ * reward handling definitions and enable future unification.
  *
- * At runtime, the MoPub SDK will find and instantiate an `MPRewardedVideoCustomEvent` subclass as needed and
- * invoke its `-requestRewardedVideoWithCustomEventInfo:` method and `+initializeSdkWithParameters:` method.
+ * At runtime, the MoPub SDK will find and instantiate an  @c MPRewardedVideoCustomEvent subclass as needed and
+ * invoke its @c -requestRewardedVideoWithCustomEventInfo: method.
  */
 
-@interface MPRewardedVideoCustomEvent : NSObject <MPMediationSdkInitializable>
+@protocol MPRewardedVideoCustomEvent <NSObject>
 
 /**
  * An optional dictionary containing extra local data.
@@ -38,44 +40,6 @@
 @property (nonatomic, weak) id<MPRewardedVideoCustomEventDelegate> delegate;
 
 /** @name Requesting and Displaying a Rewarded Video Ad */
-
-/**
- * Called when the MoPub SDK requires the underlying network SDK to be initialized.
- *
- * This method may be invoked either at SDK initialization time or on-demand when
- * `requestRewardedVideoWithCustomEventInfo:` is invoked.
- *
- * The default implementation of this method does nothing. Subclasses must override this method and implement
- * code to initialize the underlying SDK here.
- *
- * This method may be called multiple times during the lifetime of the app. As such
- * it is recommended that the implementation is encapsulated by a `dispatch_once`
- * block.
- *
- * @param parameters A dictionary containing any SDK-specific information needed for initialization,
- * such as app IDs.
- */
-- (void)initializeSdkWithParameters:(NSDictionary *)parameters;
-
-/**
- * Called when the MoPub SDK requires a new rewarded video ad.
- *
- * When the MoPub SDK receives a response indicating it should load a custom event, it will send
- * this message to your custom event class. Your implementation of this method should load an
- * rewarded video ad from a third-party ad network. It must also notify the
- * `MPRewardedVideoCustomEventDelegate` of certain lifecycle events.
- *
- * The default implementation of this method does nothing. Subclasses must override this method and implement code to load a rewarded video here.
- *
- * **Important**: The application may provide a mediation settings object containing properties that you should use to configure how you use
- * the ad network's APIs. Call `[-mediationSettingsForClass:]([MPRewardedVideoCustomEventDelegate mediationSettingsForClass:])`
- * specifying a specific class that your custom event uses to retrieve the mediation settings object if it exists. You define
- * the mediation settings class and the properties it supports for your custom event.
- *
- * @param info A dictionary containing additional custom data associated with a given custom event
- * request. This data is configurable on the MoPub website, and may be used to pass dynamic information, such as publisher IDs.
- */
-- (void)requestRewardedVideoWithCustomEventInfo:(NSDictionary *)info;
 
 /**
  * Called when the MoPub SDK requires a new rewarded video ad.
@@ -170,6 +134,16 @@
 
 @end
 
+/**
+ * A basic base class that conforms to @c MPRewardedVideoCustomEvent.
+ */
+@interface MPRewardedVideoCustomEvent : NSObject <MPRewardedVideoCustomEvent>
+
+@property (nonatomic, copy) NSDictionary * localExtras;
+@property (nonatomic, weak) id<MPRewardedVideoCustomEventDelegate> delegate;
+
+@end
+
 @protocol MPRewardedVideoCustomEventDelegate <NSObject>
 
 /** @name Rewarded Video Ad Mediation Settings */
@@ -193,7 +167,7 @@
  * @warning **Important**: Your custom event subclass **must** call this method when it successfully loads an ad.
  * Failure to do so will disrupt the mediation waterfall and cause future ad requests to stall.
  */
-- (void)rewardedVideoDidLoadAdForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoDidLoadAdForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method immediately after an ad fails to load.
@@ -206,7 +180,7 @@
  * @warning **Important**: Your custom event subclass **must** call this method when it fails to load an ad.
  * Failure to do so will disrupt the mediation waterfall and cause future ad requests to stall.
  */
-- (void)rewardedVideoDidFailToLoadAdForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent error:(NSError *)error;
+- (void)rewardedVideoDidFailToLoadAdForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent error:(NSError *)error;
 
 /**
  * Call this method if a previously loaded rewarded video should no longer be eligible for presentation.
@@ -218,7 +192,7 @@
  * @param customEvent You should pass `self` to allow the MoPub SDK to associate this event with the correct
  * instance of your custom event.
  */
-- (void)rewardedVideoDidExpireForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoDidExpireForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when the application has attempted to play a rewarded video and it cannot be played.
@@ -230,7 +204,7 @@
  *
  * @param error The error describing why the video couldn't play.
  */
-- (void)rewardedVideoDidFailToPlayForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent error:(NSError *)error;
+- (void)rewardedVideoDidFailToPlayForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent error:(NSError *)error;
 
 /**
  * Call this method when an ad is about to appear.
@@ -241,7 +215,7 @@
  * @warning **Important**: Your custom event subclass **must** call this method when it is about to present the rewarded video.
  * Failure to do so will disrupt the mediation waterfall and cause future ad requests to stall.
  */
-- (void)rewardedVideoWillAppearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoWillAppearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when an ad has finished appearing.
@@ -255,7 +229,7 @@
  * **Note**: If it is not possible to know when the rewarded video *finished* appearing, you should call
  * this immediately after calling `-rewardedVideoWillAppearForCustomEvent:`.
  */
-- (void)rewardedVideoDidAppearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoDidAppearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when an ad is about to disappear.
@@ -266,7 +240,7 @@
  * @warning **Important**: Your custom event subclass **must** call this method when it is about to dismiss the rewarded video.
  * Failure to do so will disrupt the mediation waterfall and cause future ad requests to stall.
  */
-- (void)rewardedVideoWillDisappearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoWillDisappearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when an ad has finished disappearing.
@@ -280,7 +254,7 @@
  * **Note**: if it is not possible to know when the rewarded video *finished* dismissing, you should call
  * this immediately after calling `-rewardedVideoWillDisappearForCustomEvent:`.
  */
-- (void)rewardedVideoDidDisappearForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoDidDisappearForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when the rewarded video ad will cause the user to leave the application.
@@ -290,7 +264,7 @@
  * @param customEvent You should pass `self` to allow the MoPub SDK to associate this event with the correct
  * instance of your custom event.
  */
-- (void)rewardedVideoWillLeaveApplicationForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoWillLeaveApplicationForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when the user taps on the rewarded video ad.
@@ -305,7 +279,7 @@
  * @param customEvent You should pass `self` to allow the MoPub SDK to associate this event with the correct
  * instance of your custom event.
  */
-- (void)rewardedVideoDidReceiveTapEventForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (void)rewardedVideoDidReceiveTapEventForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /**
  * Call this method when the user should be rewarded for watching the rewarded video.
@@ -317,14 +291,14 @@
  * the user. If the concept of currency type doesn't exist for your ad network, set the reward's currency type as
  * kMPRewardedVideoRewardCurrencyTypeUnspecified.
  */
-- (void)rewardedVideoShouldRewardUserForCustomEvent:(MPRewardedVideoCustomEvent *)customEvent reward:(MPRewardedVideoReward *)reward;
+- (void)rewardedVideoShouldRewardUserForCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent reward:(MPRewardedVideoReward *)reward;
 
 /**
  * Call this method to get the customer ID associated with this custom event.
  *
  * @return The user's customer ID.
  */
-- (NSString *)customerIdForRewardedVideoCustomEvent:(MPRewardedVideoCustomEvent *)customEvent;
+- (NSString *)customerIdForRewardedVideoCustomEvent:(id<MPRewardedVideoCustomEvent>)customEvent;
 
 /** @name Impression and Click Tracking */
 

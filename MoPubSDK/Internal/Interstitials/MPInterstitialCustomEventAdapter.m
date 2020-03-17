@@ -1,7 +1,7 @@
 //
 //  MPInterstitialCustomEventAdapter.m
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -12,11 +12,13 @@
 #import "MPAdTargeting.h"
 #import "MPConstants.h"
 #import "MPCoreInstanceProvider.h"
+#import "MPError.h"
 #import "MPHTMLInterstitialCustomEvent.h"
 #import "MPLogging.h"
 #import "MPInterstitialCustomEvent.h"
 #import "MPInterstitialAdController.h"
 #import "MPMRAIDInterstitialCustomEvent.h"
+#import "MPVASTInterstitialCustomEvent.h"
 #import "MPRealTimeTimer.h"
 
 @interface MPInterstitialCustomEventAdapter ()
@@ -30,10 +32,6 @@
 @end
 
 @implementation MPInterstitialCustomEventAdapter
-@synthesize hasTrackedImpression = _hasTrackedImpression;
-@synthesize hasTrackedClick = _hasTrackedClick;
-
-@synthesize interstitialCustomEvent = _interstitialCustomEvent;
 
 - (void)dealloc
 {
@@ -56,21 +54,15 @@
 
     MPInterstitialCustomEvent *customEvent = [[configuration.customEventClass alloc] init];
     if (![customEvent isKindOfClass:[MPInterstitialCustomEvent class]]) {
-        MPLogError(@"**** Custom Event Class: %@ does not extend MPInterstitialCustomEvent ****", NSStringFromClass(configuration.customEventClass));
-        [self.delegate adapter:self didFailToLoadAdWithError:nil];
+        NSError * error = [NSError customEventClass:configuration.customEventClass doesNotInheritFrom:MPInterstitialCustomEvent.class];
+        MPLogEvent([MPLogEvent error:error message:nil]);
+        [self.delegate adapter:self didFailToLoadAdWithError:error];
         return;
     }
     customEvent.delegate = self;
     customEvent.localExtras = targeting.localExtras;
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundeclared-selector"
-    if ([customEvent respondsToSelector:@selector(customEventDidUnload)]) {
-        MPLogWarn(@"**** Custom Event Class: %@ implements the deprecated -customEventDidUnload method.  This is no longer called.  Use -dealloc for cleanup instead ****", NSStringFromClass(configuration.customEventClass));
-    }
-#pragma clang diagnostic pop
-
     self.interstitialCustomEvent = customEvent;
+
     [self.interstitialCustomEvent requestInterstitialWithCustomEventInfo:configuration.customEventClassData adMarkup:configuration.advancedBidPayload];
 }
 
@@ -103,8 +95,10 @@
     [self.delegate adapterDidFinishLoadingAd:self];
 
     // Check for MoPub-specific custom events before setting the timer
+    // Custom events for 3rd party SDK have their own timeout and expiration handling
     if ([customEvent isKindOfClass:[MPHTMLInterstitialCustomEvent class]]
-        || [customEvent isKindOfClass:[MPMRAIDInterstitialCustomEvent class]]) {
+        || [customEvent isKindOfClass:[MPMRAIDInterstitialCustomEvent class]]
+        || [customEvent isKindOfClass:[MPVASTInterstitialCustomEvent class]]) {
         // Set up timer for expiration
         __weak __typeof__(self) weakSelf = self;
         self.expirationTimer = [[MPRealTimeTimer alloc] initWithInterval:[MPConstants adsExpirationInterval] block:^(MPRealTimeTimer *timer){

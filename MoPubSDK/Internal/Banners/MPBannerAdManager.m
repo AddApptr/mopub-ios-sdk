@@ -1,7 +1,7 @@
 //
 //  MPBannerAdManager.m
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -15,6 +15,7 @@
 #import "MPTimer.h"
 #import "MPConstants.h"
 #import "MPLogging.h"
+#import "MPStopwatch.h"
 #import "MPBannerCustomEventAdapter.h"
 #import "NSMutableArray+MPAdditions.h"
 #import "NSDate+MPAdditions.h"
@@ -30,11 +31,12 @@
 @property (nonatomic, strong) MPAdTargeting *targeting;
 @property (nonatomic, strong) NSMutableArray<MPAdConfiguration *> *remainingConfigurations;
 @property (nonatomic, strong) MPTimer *refreshTimer;
+@property (nonatomic, strong) NSURL *mostRecentlyLoadedURL; // ADF-4286: avoid infinite ad reloads
 @property (nonatomic, assign) BOOL adActionInProgress;
 @property (nonatomic, assign) BOOL automaticallyRefreshesContents;
 @property (nonatomic, assign) BOOL hasRequestedAtLeastOneAd;
 @property (nonatomic, assign) UIInterfaceOrientation currentOrientation;
-@property (nonatomic, assign) NSTimeInterval adapterLoadStartTimestamp;
+@property (nonatomic, strong) MPStopwatch *loadStopwatch;
 
 - (void)loadAdWithURL:(NSURL *)URL;
 - (void)applicationWillEnterForeground;
@@ -44,14 +46,6 @@
 @end
 
 @implementation MPBannerAdManager
-
-@synthesize delegate = _delegate;
-@synthesize communicator = _communicator;
-@synthesize onscreenAdapter = _onscreenAdapter;
-@synthesize requestingAdapter = _requestingAdapter;
-@synthesize refreshTimer = _refreshTimer;
-@synthesize adActionInProgress = _adActionInProgress;
-@synthesize currentOrientation = _currentOrientation;
 
 - (id)initWithDelegate:(id<MPBannerAdManagerDelegate>)delegate
 {
@@ -73,6 +67,8 @@
 
         self.automaticallyRefreshesContents = YES;
         self.currentOrientation = MPInterfaceOrientation();
+
+        _loadStopwatch = MPStopwatch.new;
     }
     return self;
 }
@@ -99,12 +95,14 @@
 
 - (void)loadAdWithTargeting:(MPAdTargeting *)targeting
 {
+    MPLogAdEvent(MPLogEvent.adLoadAttempt, self.delegate.adUnitId);
+
     if (!self.hasRequestedAtLeastOneAd) {
         self.hasRequestedAtLeastOneAd = YES;
     }
 
     if (self.loading) {
-        MPLogWarn(@"Banner view (%@) is already loading an ad. Wait for previous load to finish.", [self.delegate adUnitId]);
+        MPLogEvent([MPLogEvent error:NSError.adAlreadyLoading message:nil]);
         return;
     }
 
@@ -133,6 +131,13 @@
 {
     if ([self.refreshTimer isValid]) {
         [self.refreshTimer pause];
+    }
+}
+
+- (void)resumeRefreshTimer
+{
+    if ([self.refreshTimer isValid]) {
+        [self.refreshTimer resume];
     }
 }
 
@@ -165,10 +170,9 @@
 
     [self.communicator cancel];
 
-    URL = (URL) ? URL : [MPAdServerURLBuilder URLWithAdUnitID:[self.delegate adUnitId]
-                                                     keywords:self.targeting.keywords
-                                             userDataKeywords:self.targeting.userDataKeywords
-                                                     location:self.targeting.location];
+    URL = (URL) ? URL : [MPAdServerURLBuilder URLWithAdUnitID:[self.delegate adUnitId] targeting:self.targeting];
+
+    self.mostRecentlyLoadedURL = URL;
 
     [self.communicator loadURL:URL];
 }
@@ -180,6 +184,11 @@
     [self.onscreenAdapter rotateToOrientation:orientation];
 }
 
+- (BOOL)isMraidAd
+{
+    return self.requestingConfiguration.isMraidAd;
+}
+
 #pragma mark - Internal
 
 - (void)scheduleRefreshTimer
@@ -187,11 +196,11 @@
     [self.refreshTimer invalidate];
     NSTimeInterval timeInterval = self.requestingConfiguration ? self.requestingConfiguration.refreshInterval : DEFAULT_BANNER_REFRESH_INTERVAL;
 
-    if (timeInterval > 0) {
-        self.refreshTimer = [[MPCoreInstanceProvider sharedProvider] buildMPTimerWithTimeInterval:timeInterval
-                                                                                       target:self
-                                                                                     selector:@selector(refreshTimerDidFire)
-                                                                                      repeats:NO];
+    if (self.automaticallyRefreshesContents && timeInterval > 0) {
+        self.refreshTimer = [MPTimer timerWithTimeInterval:timeInterval
+                                                    target:self
+                                                  selector:@selector(refreshTimerDidFire)
+                                                   repeats:NO];
         [self.refreshTimer scheduleNow];
         MPLogDebug(@"Scheduled the autorefresh timer to fire in %.1f seconds (%p).", timeInterval, self.refreshTimer);
     }
@@ -199,8 +208,10 @@
 
 - (void)refreshTimerDidFire
 {
-    if (!self.loading && self.automaticallyRefreshesContents) {
-        [self loadAdWithTargeting:self.targeting];
+    if (!self.loading) {
+        // Instead of reusing the existing `MPAdTargeting` that is potentially outdated, ask the
+        // delegate to provide the `MPAdTargeting` so that it's the latest.
+        [self loadAdWithTargeting:self.delegate.adTargeting];
     }
 }
 
@@ -211,36 +222,25 @@
 }
 
 - (void)fetchAdWithConfiguration:(MPAdConfiguration *)configuration {
-    MPLogInfo(@"Banner ad view is fetching ad network type: %@", configuration.networkType);
-
-    if (configuration.adType == MPAdTypeUnknown) {
-        [self didFailToLoadAdapterWithError:[MOPUBError errorWithCode:MOPUBErrorServerError]];
-        return;
-    }
-
-    if (configuration.adType == MPAdTypeInterstitial) {
-        MPLogWarn(@"Could not load ad: banner object received an interstitial ad unit ID.");
-        [self didFailToLoadAdapterWithError:[MOPUBError errorWithCode:MOPUBErrorAdapterInvalid]];
-        return;
-    }
+    MPLogInfo(@"Banner ad view is fetching ad type: %@", configuration.adType);
 
     if (configuration.adUnitWarmingUp) {
         MPLogInfo(kMPWarmingUpErrorLogFormatWithAdUnitID, self.delegate.adUnitId);
-        [self didFailToLoadAdapterWithError:[MOPUBError errorWithCode:MOPUBErrorAdUnitWarmingUp]];
+        [self didFailToLoadAdapterWithError:[NSError errorWithCode:MOPUBErrorAdUnitWarmingUp]];
         return;
     }
 
-    if ([configuration.networkType isEqualToString:kAdTypeClear]) {
+    if ([configuration.adType isEqualToString:kAdTypeClear]) {
         MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.delegate.adUnitId);
-        [self didFailToLoadAdapterWithError:[MOPUBError errorWithCode:MOPUBErrorNoInventory]];
+        [self didFailToLoadAdapterWithError:[NSError errorWithCode:MOPUBErrorNoInventory]];
         return;
     }
 
     // Notify Ad Server of the ad fetch attempt. This is fire and forget.
     [self.communicator sendBeforeLoadUrlWithConfiguration:configuration];
 
-    // Record the start time of the load.
-    self.adapterLoadStartTimestamp = NSDate.now.timeIntervalSince1970;
+    // Start the stopwatch for the adapter load.
+    [self.loadStopwatch start];
 
     self.requestingAdapter = [[MPBannerCustomEventAdapter alloc] initWithConfiguration:configuration
                                                                               delegate:self];
@@ -262,7 +262,7 @@
     // There are no configurations to try. Consider this a clear response by the server.
     if (self.remainingConfigurations.count == 0 && self.requestingConfiguration == nil) {
         MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.delegate.adUnitId);
-        [self didFailToLoadAdapterWithError:[MOPUBError errorWithCode:MOPUBErrorNoInventory]];
+        [self didFailToLoadAdapterWithError:[NSError errorWithCode:MOPUBErrorNoInventory]];
         return;
     }
 
@@ -276,10 +276,16 @@
 
 - (void)didFailToLoadAdapterWithError:(NSError *)error
 {
-    [self.delegate managerDidFailToLoadAd];
+    [self.delegate managerDidFailToLoadAdWithError:error];
     [self scheduleRefreshTimer];
+}
 
-    MPLogError(@"Banner view (%@) failed. Error: %@", [self.delegate adUnitId], error);
+- (BOOL)isFullscreenAd {
+    return NO;
+}
+
+- (NSString *)adUnitId {
+    return [self.delegate adUnitId];
 }
 
 #pragma mark - <MPBannerAdapterDelegate>
@@ -340,9 +346,10 @@
         self.requestingAdapterAdContentView = ad;
 
         // Record the end of the adapter load and send off the fire and forget after-load-url tracker.
-        NSTimeInterval duration = NSDate.now.timeIntervalSince1970 - self.adapterLoadStartTimestamp;
+        NSTimeInterval duration = [self.loadStopwatch stop];
         [self.communicator sendAfterLoadUrlWithConfiguration:self.requestingConfiguration adapterLoadDuration:duration adapterLoadResult:MPAfterLoadResultAdLoaded];
 
+        MPLogAdEvent(MPLogEvent.adDidLoad, self.delegate.banner.adUnitId);
         [self presentRequestingAdapter];
     }
 }
@@ -351,7 +358,7 @@
 {
     // Record the end of the adapter load and send off the fire and forget after-load-url tracker
     // with the appropriate error code result.
-    NSTimeInterval duration = NSDate.now.timeIntervalSince1970 - self.adapterLoadStartTimestamp;
+    NSTimeInterval duration = [self.loadStopwatch stop];
     MPAfterLoadResult result = (error.isAdRequestTimedOutError ? MPAfterLoadResultTimeout : (adapter == nil ? MPAfterLoadResultMissingAdapter : MPAfterLoadResultError));
     [self.communicator sendAfterLoadUrlWithConfiguration:self.requestingConfiguration adapterLoadDuration:duration adapterLoadResult:result];
 
@@ -362,13 +369,15 @@
             [self fetchAdWithConfiguration:self.requestingConfiguration];
         }
         // No more configurations to try. Send new request to Ads server to get more Ads.
-        else if (self.requestingConfiguration.nextURL != nil) {
+        else if (self.requestingConfiguration.nextURL != nil
+                 && [self.requestingConfiguration.nextURL isEqual:self.mostRecentlyLoadedURL] == false) {
             [self loadAdWithURL:self.requestingConfiguration.nextURL];
         }
         // No more configurations to try and no more pages to load.
         else {
-            MPLogInfo(kMPClearErrorLogFormatWithAdUnitID, self.delegate.adUnitId);
-            [self didFailToLoadAdapterWithError:[MOPUBError errorWithCode:MOPUBErrorNoInventory]];
+            NSError * clearResponseError = [NSError errorWithCode:MOPUBErrorNoInventory localizedDescription:[NSString stringWithFormat:kMPClearErrorLogFormatWithAdUnitID, self.delegate.banner.adUnitId]];
+            MPLogAdEvent([MPLogEvent adFailedToLoadWithError:clearResponseError], self.delegate.banner.adUnitId);
+            [self didFailToLoadAdapterWithError:clearResponseError];
         }
     }
 
@@ -391,16 +400,21 @@
     }
 }
 
-- (void)adapter:(MPBaseBannerAdapter *)adapter didTrackImpressionForAd:(UIView *)ad {
+- (void)adapterDidTrackImpressionForAd:(MPBaseBannerAdapter *)adapter {
     if (self.onscreenAdapter == adapter && [self shouldScheduleTimerOnImpressionDisplay]) {
         [self scheduleRefreshTimer];
     }
+
+    [self.delegate impressionDidFireWithImpressionData:self.requestingConfiguration.impressionData];
 }
 
 - (void)userActionWillBeginForAdapter:(MPBaseBannerAdapter *)adapter
 {
     if (self.onscreenAdapter == adapter) {
         self.adActionInProgress = YES;
+
+        MPLogAdEvent(MPLogEvent.adTapped, self.delegate.banner.adUnitId);
+        MPLogAdEvent(MPLogEvent.adWillPresentModal, self.delegate.banner.adUnitId);
         [self.delegate userActionWillBegin];
     }
 }
@@ -408,7 +422,9 @@
 - (void)userActionDidFinishForAdapter:(MPBaseBannerAdapter *)adapter
 {
     if (self.onscreenAdapter == adapter) {
+        MPLogAdEvent(MPLogEvent.adDidDismissModal, self.delegate.banner.adUnitId);
         [self.delegate userActionDidFinish];
+
         self.adActionInProgress = NO;
         [self presentRequestingAdapter];
     }
@@ -417,8 +433,24 @@
 - (void)userWillLeaveApplicationFromAdapter:(MPBaseBannerAdapter *)adapter
 {
     if (self.onscreenAdapter == adapter) {
+        MPLogAdEvent(MPLogEvent.adTapped, self.delegate.banner.adUnitId);
+        MPLogAdEvent(MPLogEvent.adWillLeaveApplication, self.delegate.banner.adUnitId);
         [self.delegate userWillLeaveApplication];
     }
+}
+
+- (void)adWillExpandForAdapter:(MPBaseBannerAdapter *)adapter
+{
+    // While the banner ad is in an expanded state, the refresh timer should be paused
+    // since the user is interacting with the ad experience.
+    [self pauseRefreshTimer];
+}
+
+- (void)adDidCollapseForAdapter:(MPBaseBannerAdapter *)adapter
+{
+    // Once the banner ad is collapsed back into its default state, the refresh timer
+    // should be resumed to queue up the next ad.
+    [self resumeRefreshTimer];
 }
 
 @end

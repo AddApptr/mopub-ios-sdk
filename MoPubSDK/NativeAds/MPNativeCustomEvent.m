@@ -1,7 +1,7 @@
 //
 //  MPNativeCustomEvent.m
 //
-//  Copyright 2018 Twitter, Inc.
+//  Copyright 2018-2020 Twitter, Inc.
 //  Licensed under the MoPub SDK License Agreement
 //  http://www.mopub.com/legal/sdk-license-agreement/
 //
@@ -32,7 +32,7 @@
 - (void)precacheImagesWithURLs:(NSArray *)imageURLs completionBlock:(void (^)(NSArray *errors))completionBlock
 {
     if (imageURLs.count > 0) {
-        [_imageDownloadQueue addDownloadImageURLs:imageURLs completionBlock:^(NSArray *errors) {
+        [_imageDownloadQueue addDownloadImageURLs:imageURLs completionBlock:^(NSDictionary <NSURL *, UIImage *> *result, NSArray *errors) {
             if (completionBlock) {
                 completionBlock(errors);
             }
@@ -44,16 +44,9 @@
     }
 }
 
-- (void)requestAdWithCustomEventInfo:(NSDictionary *)info
-{
-    /*override with custom network behavior*/
-}
-
 - (void)requestAdWithCustomEventInfo:(NSDictionary *)info adMarkup:(NSString *)adMarkup
 {
-    // By default, the original requestAdWithCustomEventInfo: method will be called.
-    // Otherwise subclasses must override this method and implement code to load a banner here.
-    [self requestAdWithCustomEventInfo:info];
+    /*override with custom network behavior*/
 }
 
 @end
