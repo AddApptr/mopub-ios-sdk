@@ -22,6 +22,8 @@ The key is an `MPVideoEvent`, and the value is the call count.
 
 @property (nonatomic, strong) NSMutableDictionary<MPVideoEvent, NSMutableSet<MPVASTTrackingEvent *> *> *firedTable;
 
+@property (nonatomic, strong) NSMutableArray<NSURL *> *historyOfSentURLs;
+
 @end
 
 @implementation MPMockVASTTracking
@@ -38,6 +40,7 @@ The key is an `MPVideoEvent`, and the value is the call count.
     _selectotCounter = [MPSelectorCounter new];
     _videoEventCallHistory = [NSMutableDictionary new];
     _firedTable = [NSMutableDictionary new];
+    _historyOfSentURLs = [NSMutableArray new];
 
     dispatch_once(&dispatchOnceToken, ^{
         oneOffEventTypes = [NSSet setWithObjects:
@@ -60,6 +63,8 @@ The key is an `MPVideoEvent`, and the value is the call count.
 - (void)resetHistory {
     [self resetSelectorCounter];
     [self.videoEventCallHistory removeAllObjects];
+    [self.firedTable removeAllObjects];
+    [self.historyOfSentURLs removeAllObjects];
 }
 
 - (NSUInteger)countOfVideoEventCalls:(MPVideoEvent)videoEvent {
@@ -89,6 +94,11 @@ The key is an `MPVideoEvent`, and the value is the call count.
         [self commonInit];
     }
     return self;
+}
+
+- (void)uniquelySendURLs:(NSArray<NSURL *> *)urls {
+    [self.selectotCounter incrementCountForSelector:@selector(uniquelySendURLs:)];
+    [self.historyOfSentURLs addObjectsFromArray:urls];
 }
 
 - (void)handleVASTError:(MPVASTError)error videoTimeOffset:(NSTimeInterval)videoTimeOffset {

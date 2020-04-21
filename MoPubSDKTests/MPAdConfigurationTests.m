@@ -146,27 +146,42 @@ extern NSString * const kNativeImpressionMinVisiblePixelsMetadataKey;
     XCTAssert(config.selectedReward.amount.integerValue == 3);
 }
 
-#pragma mark - Native Trackers
+#pragma mark - VAST Trackers
 
-- (void)testNativeVideoTrackersNoHeader
+- (void)testVASTVideoTrackersNoHeader
 {
     MPAdConfiguration *config = [MPAdConfigurationFactory defaultNativeAdConfiguration];
-    XCTAssertNil(config.nativeVideoTrackers);
+    XCTAssertNil(config.vastVideoTrackers);
 }
 
 // @"{
 //    "urls": ["http://mopub.com/%%VIDEO_EVENT%%/foo", "http://mopub.com/%%VIDEO_EVENT%%/bar"],
 //    "events": ["start", "firstQuartile", "midpoint", "thirdQuartile", "complete"]
 //   }"
-- (void)testNaiveVideoTrackers {
+- (void)testVASTVideoTrackers {
     MPAdConfiguration *config = [MPAdConfigurationFactory defaultNativeVideoConfigurationWithVideoTrackers];
-    XCTAssertNotNil(config.nativeVideoTrackers);
-    XCTAssertEqual(config.nativeVideoTrackers.count, 5);
-    XCTAssertEqual(((NSArray *)config.nativeVideoTrackers[MPVideoEventStart]).count, 2);
-    XCTAssertEqual(((NSArray *)config.nativeVideoTrackers[MPVideoEventFirstQuartile]).count, 2);
-    XCTAssertEqual(((NSArray *)config.nativeVideoTrackers[MPVideoEventMidpoint]).count, 2);
-    XCTAssertEqual(((NSArray *)config.nativeVideoTrackers[MPVideoEventThirdQuartile]).count, 2);
-    XCTAssertEqual(((NSArray *)config.nativeVideoTrackers[MPVideoEventComplete]).count, 2);
+    XCTAssertNotNil(config.vastVideoTrackers);
+    XCTAssertEqual(config.vastVideoTrackers.count, 5);
+    XCTAssertEqual(((NSArray *)config.vastVideoTrackers[MPVideoEventStart]).count, 2);
+    XCTAssertEqual(((NSArray *)config.vastVideoTrackers[MPVideoEventFirstQuartile]).count, 2);
+    XCTAssertEqual(((NSArray *)config.vastVideoTrackers[MPVideoEventMidpoint]).count, 2);
+    XCTAssertEqual(((NSArray *)config.vastVideoTrackers[MPVideoEventThirdQuartile]).count, 2);
+    XCTAssertEqual(((NSArray *)config.vastVideoTrackers[MPVideoEventComplete]).count, 2);
+}
+
+#pragma mark - MRAID
+
+- (void)testNoAllowCustomClose {
+    MPAdConfiguration *config = [MPAdConfigurationFactory defaultMRAIDInterstitialConfiguration];
+    XCTAssertFalse(config.mraidAllowCustomClose);
+}
+
+- (void)testAllowCustomClose {
+    NSDictionary *headers = @{
+        @"allow-custom-close": @(1)
+    };
+    MPAdConfiguration *config = [MPAdConfigurationFactory defaultMRAIDInterstitialConfigurationWithAdditionalHeaders: headers];
+    XCTAssertTrue(config.mraidAllowCustomClose);
 }
 
 #pragma mark - Viewability
@@ -317,24 +332,6 @@ extern NSString * const kNativeImpressionMinVisiblePixelsMetadataKey;
     MPAdConfiguration * config = [[MPAdConfiguration alloc] initWithMetadata:headers data:nil isFullscreenAd:YES];
     XCTAssertEqual(config.impressionMinVisiblePixels, 1);
     XCTAssertEqual(config.impressionMinVisibleTimeInSec, 0);
-}
-
-- (void)testVisibleImpressionEnabled {
-    NSDictionary * headers = @{ kBannerImpressionVisableMsMetadataKey: @"0", kBannerImpressionMinPixelMetadataKey:@"1"};
-    MPAdConfiguration * config = [[MPAdConfiguration alloc] initWithMetadata:headers data:nil isFullscreenAd:YES];
-    XCTAssertTrue(config.visibleImpressionTrackingEnabled);
-}
-
-- (void)testVisibleImpressionEnabledNoHeader {
-    NSDictionary * headers = @{};
-    MPAdConfiguration * config = [[MPAdConfiguration alloc] initWithMetadata:headers data:nil isFullscreenAd:YES];
-    XCTAssertFalse(config.visibleImpressionTrackingEnabled);
-}
-
-- (void)testVisibleImpressionNotEnabled {
-    NSDictionary * headers = @{kBannerImpressionVisableMsMetadataKey: @"0", kBannerImpressionMinPixelMetadataKey:@"0"};
-    MPAdConfiguration * config = [[MPAdConfiguration alloc] initWithMetadata:headers data:nil isFullscreenAd:YES];
-    XCTAssertFalse(config.visibleImpressionTrackingEnabled);
 }
 
 #pragma mark - Multiple Impression Tracking URLs

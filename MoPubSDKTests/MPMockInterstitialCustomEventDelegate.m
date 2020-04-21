@@ -149,7 +149,7 @@
 
 - (MPAdConfiguration *)configuration {
     [self.selectotCounter incrementCountForSelector:@selector(configuration)];
-    return nil;
+    return self.mockConfiguration;
 }
 
 - (id)interstitialDelegate {

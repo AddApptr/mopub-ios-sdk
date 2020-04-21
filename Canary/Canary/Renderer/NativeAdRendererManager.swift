@@ -11,6 +11,7 @@ import MoPub
 import MoPub_AdMob_Adapters
 import MoPub_FacebookAudienceNetwork_Adapters
 import MoPub_Flurry_Adapters
+import MoPub_Mintegral_Adapters
 import MoPub_Verizon_Adapters
 
 final class NativeAdRendererManager {
@@ -140,6 +141,9 @@ private extension NativeAdRendererManager {
             renderers.append(verizonConfig)
         }
         
+        // OPTIONAL: Mintegral native video renderer
+        renderers.append(MintegralNativeAdRenderer.rendererConfiguration(with: mopubVideoRendererSettings))
+
         return renderers
     }
 }

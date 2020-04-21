@@ -89,7 +89,6 @@
                                                                                       kAdTitleKey: @"",
                                                                                       kAdCTATextKey: @"",
                                                                                       kVASTVideoKey: @"",
-                                                                                      kImpressionTrackerURLsKey: @[@"https://google.com"],
                                                                                       kClickTrackerURLKey: @[@"https://google.com"],
                                                                                       kNativeAdConfigKey: config,
                                                                                       }];
@@ -116,7 +115,6 @@
                                                                                       kAdTitleKey: @"",
                                                                                       kAdCTATextKey: @"",
                                                                                       kVASTVideoKey: @"",
-                                                                                      kImpressionTrackerURLsKey: @[@"https://google.com"],
                                                                                       kClickTrackerURLKey: @[@"https://google.com"],
                                                                                       kNativeAdConfigKey: config,
                                                                                       }];
@@ -143,7 +141,6 @@
                                                                                       kAdTitleKey: @"",
                                                                                       kAdCTATextKey: @"",
                                                                                       kVASTVideoKey: @"",
-                                                                                      kImpressionTrackerURLsKey: @[@"https://google.com"],
                                                                                       kClickTrackerURLKey: @[@"https://google.com"],
                                                                                       kNativeAdConfigKey: config,
                                                                                       }];

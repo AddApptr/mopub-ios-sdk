@@ -47,19 +47,9 @@
 
 #pragma mark - MRControllerDelegate
 
-- (CLLocation *)location
-{
-    return [self.delegate location];
-}
-
 - (NSString *)adUnitId
 {
     return [self.delegate adUnitId];
-}
-
-- (MPAdConfiguration *)adConfiguration
-{
-    return [self.delegate configuration];
 }
 
 - (UIViewController *)viewControllerForPresentingModalView
@@ -75,7 +65,7 @@
 
 - (void)adDidFailToLoad:(UIView *)adView
 {
-    NSString * message = [NSString stringWithFormat:@"Failed to load creative:\n%@", self.adConfiguration.adResponseHTMLString];
+    NSString * message = [NSString stringWithFormat:@"Failed to load creative:\n%@", self.delegate.configuration.adResponseHTMLString];
     NSError * error = [NSError errorWithCode:MOPUBErrorAdapterFailedToLoadAd localizedDescription:message];
 
     MPLogAdEvent([MPLogEvent adLoadFailedForAdapter:NSStringFromClass(self.class) error:error], self.adUnitId);
@@ -99,12 +89,12 @@
 
 - (void)trackImpressionsIncludedInMarkup
 {
-    [self.mraidController.mraidWebView stringByEvaluatingJavaScriptFromString:@"webviewDidAppear();"];
+    [self.mraidController triggerWebviewDidAppear];
 }
 
 - (void)startViewabilityTracker
 {
-    [self.mraidController.viewabilityTracker startTracking];
+    [self.mraidController startViewabilityTracking];
 }
 
 - (void)adWillExpand:(UIView *)adView
