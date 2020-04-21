@@ -34,6 +34,7 @@
 + (NSMutableDictionary *)defaultInterstitialHeaders;
 + (MPAdConfiguration *)defaultInterstitialConfiguration;
 + (MPAdConfiguration *)defaultMRAIDInterstitialConfiguration;
++ (MPAdConfiguration *)defaultMRAIDInterstitialConfigurationWithAdditionalHeaders:(NSDictionary *)additionalHeaders;
 + (MPAdConfiguration *)defaultFakeInterstitialConfiguration;
 + (MPAdConfiguration *)defaultInterstitialConfigurationWithNetworkType:(NSString *)type;
 + (MPAdConfiguration *)defaultChartboostInterstitialConfigurationWithLocation:(NSString *)location;

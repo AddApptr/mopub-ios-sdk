@@ -17,6 +17,9 @@
 #import "MPAdImpressionTimer.h"
 #import "MPBannerCustomEvent+Internal.h"
 
+static CGFloat const kDefaultRequiredPixelsInViewForImpression         = 1.0;
+static NSTimeInterval const kDefaultRequiredSecondsInViewForImpression = 0.0;
+
 @interface MPBannerCustomEventAdapter () <MPAdImpressionTimerDelegate>
 
 @property (nonatomic, strong) MPBannerCustomEvent *bannerCustomEvent;
@@ -85,13 +88,8 @@
 
 - (void)didDisplayAd
 {
-    if([self shouldTrackImpressionOnDisplay]) {
-        [self trackImpressionOnDisplay];
-    } else if (self.configuration.visibleImpressionTrackingEnabled) {
+    if ([self.bannerCustomEvent enableAutomaticImpressionAndClickTracking]) {
         [self startViewableTrackingTimer];
-    } else {
-        // Mediated networks except Google AdMob
-        // no-op here.
     }
 
     [self.bannerCustomEvent didDisplayAd];
@@ -99,28 +97,16 @@
 
 #pragma mark - 1px impression tracking methods
 
-- (void)trackImpressionOnDisplay
-{
-    self.hasTrackedImpression = YES;
-    [self trackImpression];
-}
-
 - (void)startViewableTrackingTimer
 {
-    self.impressionTimer = [[MPAdImpressionTimer alloc] initWithRequiredSecondsForImpression:self.configuration.impressionMinVisibleTimeInSec requiredViewVisibilityPixels:self.configuration.impressionMinVisiblePixels];
+    // Use defaults if server did not send values
+    NSTimeInterval minimumSecondsForImpression = self.configuration.impressionMinVisibleTimeInSec >= 0 ? self.configuration.impressionMinVisibleTimeInSec : kDefaultRequiredSecondsInViewForImpression;
+    CGFloat minimumPixelsForImpression = self.configuration.impressionMinVisiblePixels >= 0 ? self.configuration.impressionMinVisiblePixels : kDefaultRequiredPixelsInViewForImpression;
+
+    self.impressionTimer = [[MPAdImpressionTimer alloc] initWithRequiredSecondsForImpression:minimumSecondsForImpression
+                                                                requiredViewVisibilityPixels:minimumPixelsForImpression];
     self.impressionTimer.delegate = self;
     [self.impressionTimer startTrackingView:self.adView];
-}
-
-
-- (BOOL)shouldTrackImpressionOnDisplay {
-    if (self.configuration.visibleImpressionTrackingEnabled) {
-        return NO;
-    }
-    if([self.bannerCustomEvent enableAutomaticImpressionAndClickTracking] && !self.hasTrackedImpression) {
-        return YES;
-    }
-    return NO;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,10 +128,13 @@
     return [self.delegate bannerDelegate];
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-implementations"
 - (CLLocation *)location
 {
     return [self.delegate location];
 }
+#pragma GCC diagnostic pop
 
 - (void)bannerCustomEvent:(MPBannerCustomEvent *)event didLoadAd:(UIView *)ad
 {

@@ -167,6 +167,10 @@ extension AdUnitTableViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return UITableView.automaticDimension
     }
+    
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        return 8 // leave some space between section headers if a section is below an empty section
+    }
 }
 
 // MARK: - UITableViewDragDelegate

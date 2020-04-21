@@ -87,24 +87,6 @@
 
 #pragma mark - MRControllerDelegate
 
-- (CLLocation *)location
-{
-    if ([self.delegate respondsToSelector:@selector(location)]) {
-        return [self.delegate location];
-    }
-    return nil;
-}
-
-- (NSString *)adUnitId
-{
-    return [self.delegate adUnitId];
-}
-
-- (MPAdConfiguration *)adConfiguration
-{
-    return self.configuration;
-}
-
 - (UIViewController *)viewControllerForPresentingModalView
 {
     return self;

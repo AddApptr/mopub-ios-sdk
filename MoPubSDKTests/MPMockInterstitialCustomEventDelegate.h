@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "MPAdConfiguration.h"
 #import "MPPrivateInterstitialCustomEventDelegate.h"
 #import "MPPrivateRewardedVideoCustomEventDelegate.h"
 #import "MPSelectorCounter.h"
@@ -22,6 +23,8 @@ NS_ASSUME_NONNULL_BEGIN
     MPPrivateRewardedVideoCustomEventDelegate,
     MPSelectorCountable
 >
+
+@property (nonatomic, nullable, strong) MPAdConfiguration *mockConfiguration;
 
 - (NSUInteger)countOfSelectorCalls:(SEL)selector;
 

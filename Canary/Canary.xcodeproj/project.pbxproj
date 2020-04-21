@@ -17,12 +17,11 @@
 		2A49E2002298766C0049B61B /* TestingMenuDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A49E1FF2298766C0049B61B /* TestingMenuDataSource.swift */; };
 		2A49E20222987B530049B61B /* SafeAreaTestViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A49E20122987B530049B61B /* SafeAreaTestViewController.swift */; };
 		2A4D35E3211D074800BE9377 /* APIEndpointMenuDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A4D35E1211D074800BE9377 /* APIEndpointMenuDataSource.swift */; };
-
+		305A5C9E23C664B700A7A31B /* ReleaseMoPubBanners.swift in Sources */ = {isa = PBXBuildFile; fileRef = 305A5C9D23C664B700A7A31B /* ReleaseMoPubBanners.swift */; };
+		308F286023FF11BB008B5049 /* ReleaseMoPubMediumRectangle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308F285F23FF11BB008B5049 /* ReleaseMoPubMediumRectangle.swift */; };
+		30CA81CD23DF687F0023ABEE /* ReleaseMoPubFullscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CA81CC23DF687E0023ABEE /* ReleaseMoPubFullscreen.swift */; };
 		3A21AB26B8AA4269334A185E /* Pods_Internal_Application.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69C4F5341E08C0E4AC70DC4B /* Pods_Internal_Application.framework */; };
 		66F24B229AD871B62FDCE094 /* Pods_AppStore_Application.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 02DEAAA7BF5569FC6D60CDA8 /* Pods_AppStore_Application.framework */; };
-		305A5C9E23C664B700A7A31B /* ReleaseMoPubBanners.swift in Sources */ = {isa = PBXBuildFile; fileRef = 305A5C9D23C664B700A7A31B /* ReleaseMoPubBanners.swift */; };
-		5A5CDC8C0D154CB3FBD61596 /* Pods_AppStore_Application.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E7C4E30CE724CAC318447FB /* Pods_AppStore_Application.framework */; };
-		
 		B2564EE320AB5039000B9F7A /* SampleAds.plist in Resources */ = {isa = PBXBuildFile; fileRef = BCF7095E1FBCCF50009A3981 /* SampleAds.plist */; };
 		B275DB2D200FD64000F053F8 /* SavedAdsDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B275DB2C200FD64000F053F8 /* SavedAdsDataSource.swift */; };
 		B275DB2E200FD64000F053F8 /* SavedAdsDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = B275DB2C200FD64000F053F8 /* SavedAdsDataSource.swift */; };
@@ -290,15 +289,14 @@
 		2A49E1FF2298766C0049B61B /* TestingMenuDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestingMenuDataSource.swift; sourceTree = "<group>"; };
 		2A49E20122987B530049B61B /* SafeAreaTestViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeAreaTestViewController.swift; sourceTree = "<group>"; };
 		2A4D35E1211D074800BE9377 /* APIEndpointMenuDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEndpointMenuDataSource.swift; sourceTree = "<group>"; };
+		305A5C9D23C664B700A7A31B /* ReleaseMoPubBanners.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReleaseMoPubBanners.swift; path = ReleaseTesting/ReleaseMoPubBanners.swift; sourceTree = "<group>"; };
+		308F285F23FF11BB008B5049 /* ReleaseMoPubMediumRectangle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ReleaseMoPubMediumRectangle.swift; path = ReleaseTesting/ReleaseMoPubMediumRectangle.swift; sourceTree = "<group>"; };
+		30CA81CC23DF687E0023ABEE /* ReleaseMoPubFullscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReleaseMoPubFullscreen.swift; path = ReleaseTesting/ReleaseMoPubFullscreen.swift; sourceTree = "<group>"; };
 		35B6FE7CFA07BF10C2BE34EF /* Pods-CanaryUnitTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CanaryUnitTests.debug.xcconfig"; path = "Target Support Files/Pods-CanaryUnitTests/Pods-CanaryUnitTests.debug.xcconfig"; sourceTree = "<group>"; };
 		36CFA2B12F2F73D267CE2B21 /* Pods-AppStore Application.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppStore Application.release.xcconfig"; path = "Target Support Files/Pods-AppStore Application/Pods-AppStore Application.release.xcconfig"; sourceTree = "<group>"; };
 		42B89F37C6E77EFF12820C10 /* Pods-CanaryUnitTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CanaryUnitTests.release.xcconfig"; path = "Target Support Files/Pods-CanaryUnitTests/Pods-CanaryUnitTests.release.xcconfig"; sourceTree = "<group>"; };
 		52DE3AB35DC970D67F9E7738 /* Pods-AppStore Application.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppStore Application.debug.xcconfig"; path = "Target Support Files/Pods-AppStore Application/Pods-AppStore Application.debug.xcconfig"; sourceTree = "<group>"; };
 		69C4F5341E08C0E4AC70DC4B /* Pods_Internal_Application.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Internal_Application.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		305A5C9D23C664B700A7A31B /* ReleaseMoPubBanners.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReleaseMoPubBanners.swift; path = ReleaseTesting/ReleaseMoPubBanners.swift; sourceTree = "<group>"; };
-		38B93E7C897560D8A670BE08 /* Pods-AppStore Application.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppStore Application.release.xcconfig"; path = "Target Support Files/Pods-AppStore Application/Pods-AppStore Application.release.xcconfig"; sourceTree = "<group>"; };
-		6C40A5887B79C7007EC58F2F /* Pods_CanaryUnitTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CanaryUnitTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		7E7C4E30CE724CAC318447FB /* Pods_AppStore_Application.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AppStore_Application.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2564EE020AB4F2B000B9F7A /* Internal-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Internal-Info.plist"; sourceTree = "<group>"; };
 		B275DB2C200FD64000F053F8 /* SavedAdsDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAdsDataSource.swift; sourceTree = "<group>"; };
 		B2D3EEB4200DAF94009FEBC9 /* SavedAdsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedAdsManager.swift; sourceTree = "<group>"; };
@@ -860,6 +858,8 @@
 		EC728C54233561B10020AEBD /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				308F285F23FF11BB008B5049 /* ReleaseMoPubMediumRectangle.swift */,
+				30CA81CC23DF687E0023ABEE /* ReleaseMoPubFullscreen.swift */,
 				EC728C5E233561B10020AEBD /* Base */,
 				EC728C58233561B10020AEBD /* HTMLBannerAdTests.swift */,
 				EC728C5D233561B10020AEBD /* HTMLInterstitialAdTests.swift */,
@@ -1353,9 +1353,9 @@
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Internal Application/Pods-Internal Application-resources.sh",
-				"${PODS_ROOT}/AppLovinSDK/applovin-ios-sdk-6.11.0/AppLovinSDKResources.bundle",
-				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.1/Libraries/Tapjoy.embeddedframework/Resources/TapjoyResources.bundle",
-				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.1/Libraries/Tapjoy.embeddedframework/Tapjoy.framework/Versions/A/Resources/TapjoyResources.bundle",
+				"${PODS_ROOT}/AppLovinSDK/applovin-ios-sdk-6.11.4/AppLovinSDKResources.bundle",
+				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.2/Libraries/Tapjoy.embeddedframework/Resources/TapjoyResources.bundle",
+				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.2/Libraries/Tapjoy.embeddedframework/Tapjoy.framework/Versions/A/Resources/TapjoyResources.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
@@ -1374,9 +1374,9 @@
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AppStore Application/Pods-AppStore Application-resources.sh",
-				"${PODS_ROOT}/AppLovinSDK/applovin-ios-sdk-6.11.0/AppLovinSDKResources.bundle",
-				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.1/Libraries/Tapjoy.embeddedframework/Resources/TapjoyResources.bundle",
-				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.1/Libraries/Tapjoy.embeddedframework/Tapjoy.framework/Versions/A/Resources/TapjoyResources.bundle",
+				"${PODS_ROOT}/AppLovinSDK/applovin-ios-sdk-6.11.4/AppLovinSDKResources.bundle",
+				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.2/Libraries/Tapjoy.embeddedframework/Resources/TapjoyResources.bundle",
+				"${PODS_ROOT}/TapjoySDK/TapjoySDK_iOS_v12.4.2/Libraries/Tapjoy.embeddedframework/Tapjoy.framework/Versions/A/Resources/TapjoyResources.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
@@ -1614,8 +1614,10 @@
 				EC728C65233561B10020AEBD /* AdListPage.swift in Sources */,
 				EC728C6B233561B10020AEBD /* NativeVideoAdTests.swift in Sources */,
 				EC728C75233561B10020AEBD /* XCUIElement+Utility.swift in Sources */,
+				30CA81CD23DF687F0023ABEE /* ReleaseMoPubFullscreen.swift in Sources */,
 				EC728C6E233561B10020AEBD /* NativeTableTests.swift in Sources */,
 				EC728C74233561B10020AEBD /* NativeCollectionTests.swift in Sources */,
+				308F286023FF11BB008B5049 /* ReleaseMoPubMediumRectangle.swift in Sources */,
 				EC728C64233561B10020AEBD /* BannerAdLabels.swift in Sources */,
 				EC728C68233561B10020AEBD /* IPhoneHome.swift in Sources */,
 				EC728C71233561B10020AEBD /* NativeAdTests.swift in Sources */,
@@ -1833,7 +1835,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5.11.0;
+				CURRENT_PROJECT_VERSION = 5.12.1;
 				DEVELOPMENT_TEAM = 4S7XS533V3;
 				INFOPLIST_FILE = Canary/Configuration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
@@ -1851,7 +1853,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5.11.0;
+				CURRENT_PROJECT_VERSION = 5.12.1;
 				DEVELOPMENT_TEAM = 4S7XS533V3;
 				INFOPLIST_FILE = Canary/Configuration/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
@@ -1869,7 +1871,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon.Internal;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5.11.0;
+				CURRENT_PROJECT_VERSION = 5.12.1;
 				DEVELOPMENT_TEAM = 4S7XS533V3;
 				INFOPLIST_FILE = "Canary/Internal/Internal-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
@@ -1888,7 +1890,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon.Internal;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5.11.0;
+				CURRENT_PROJECT_VERSION = 5.12.1;
 				DEVELOPMENT_TEAM = 4S7XS533V3;
 				INFOPLIST_FILE = "Canary/Internal/Internal-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;

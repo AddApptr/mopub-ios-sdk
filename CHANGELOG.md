@@ -1,3 +1,18 @@
+## Version 5.12.1 (April 16, 2020)
+- **Bug Fixes**
+  - Fixed banner click trackers not firing for mediated networks that do not use MoPub's auto click tracking.
+
+## Version 5.12.0 (April 6, 2020)
+- **Features**
+  - Location setters for all formats are marked deprecated and will be removed in a future release.
+  - Added Mintegral as a supported network.
+  - A new field `appVersion` has been added to `MPImpressionData`.
+  - Update the Sample app to 64-bit architectures only.
+  - Added ad load history to the Saved Ads section in the Sample app.
+
+- **Bug Fixes**
+  - Fixed potential multithreading crash in `MPAdServerURLBuilder`.
+
 ## Version 5.11.0 (February 4, 2020)
 - **Features**
   - Update GDPR logic to allow MoPub to reacquire consent for new vendors.

@@ -11,6 +11,7 @@
 @interface MPMockAnalyticsTracker ()
 
 @property (nonatomic, strong) MPSelectorCounter *selectotCounter;
+@property (nonatomic, strong, readwrite) NSArray<NSURL *> *lastTrackedUrls;
 
 @end
 
@@ -19,14 +20,25 @@
 - (instancetype)init {
     if ([super init]) {
         _selectotCounter = [MPSelectorCounter new];
+        _lastTrackedUrls = nil;
     }
     return self;
+}
+
+- (void)reset {
+    self.lastTrackedUrls = nil;
+    [self resetSelectorCounter];
 }
 
 #pragma mark - MPAnalyticsTracker
 
 - (void)sendTrackingRequestForURLs:(NSArray<NSURL *> *)URLs {
     [self.selectotCounter incrementCountForSelector:@selector(sendTrackingRequestForURLs:)];
+    if (self.lastTrackedUrls == nil) {
+        self.lastTrackedUrls = URLs;
+    } else {
+        self.lastTrackedUrls = [self.lastTrackedUrls arrayByAddingObjectsFromArray:URLs];
+    }
 }
 
 - (void)trackClickForConfiguration:(MPAdConfiguration *)configuration {

@@ -292,6 +292,8 @@ static const NSTimeInterval kDefaultTimeout = 10;
     MPAdTargeting * targeting = [[MPAdTargeting alloc] initWithCreativeSafeSize:CGSizeZero];
     [manager loadAdWithTargeting:targeting];
 
+    [manager.onscreenAdapter trackImpression];
+
     [self waitForExpectationsWithTimeout:kDefaultTimeout handler:^(NSError * _Nullable error) {
         if (error != nil) {
             XCTFail(@"Timed out");
@@ -326,6 +328,8 @@ static const NSTimeInterval kDefaultTimeout = 10;
 
     MPAdTargeting * targeting = [[MPAdTargeting alloc] initWithCreativeSafeSize:CGSizeZero];
     [manager loadAdWithTargeting:targeting];
+
+    [manager.onscreenAdapter trackImpression];
 
     [self waitForExpectationsWithTimeout:kDefaultTimeout handler:^(NSError * _Nullable error) {
         if (error != nil) {

@@ -13,8 +13,6 @@
 #define kClickTrackerURLKey         @"clktracker"
 #define kDefaultActionURLKey        @"clk"
 
-extern NSString *const kNativeVideoTrackersMetadataKey;
-
 @implementation MPAdConfigurationFactory
 
 + (MPAdConfiguration *)clearResponse
@@ -170,10 +168,20 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
 
 + (MPAdConfiguration *)defaultMRAIDInterstitialConfiguration
 {
-    NSDictionary *headers = @{
+    return [self defaultMRAIDInterstitialConfigurationWithAdditionalHeaders:nil];
+}
+
++ (MPAdConfiguration *)defaultMRAIDInterstitialConfigurationWithAdditionalHeaders:(NSDictionary *)additionalHeaders
+{
+    NSMutableDictionary *headers = [@{
                               kAdTypeMetadataKey: @"mraid",
                               kOrientationTypeMetadataKey: @"p"
-                              };
+                              } mutableCopy];
+
+    // Merge the headers if needed
+    if (additionalHeaders != nil) {
+        [headers addEntriesFromDictionary:additionalHeaders];
+    }
 
     return [self defaultInterstitialConfigurationWithHeaders:headers
                                                   HTMLString:nil];
@@ -263,7 +271,7 @@ extern NSString *const kNativeVideoTrackersMetadataKey;
 + (NSMutableDictionary *)defaultNativeVideoHeadersWithTrackers
 {
     NSMutableDictionary *dict = [[self defaultNativeAdHeaders] mutableCopy];
-    dict[kNativeVideoTrackersMetadataKey] = @"{\"urls\": [\"http://mopub.com/%%VIDEO_EVENT%%/foo\", \"http://mopub.com/%%VIDEO_EVENT%%/bar\"],\"events\": [\"start\", \"firstQuartile\", \"midpoint\", \"thirdQuartile\", \"complete\"]}";
+    dict[kVASTVideoTrackersMetadataKey] = @"{\"urls\": [\"http://mopub.com/%%VIDEO_EVENT%%/foo\", \"http://mopub.com/%%VIDEO_EVENT%%/bar\"],\"events\": [\"start\", \"firstQuartile\", \"midpoint\", \"thirdQuartile\", \"complete\"]}";
     return dict;
 }
 
